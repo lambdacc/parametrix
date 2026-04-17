@@ -1,8 +1,5 @@
-// charli3Oracle.ts
-// Clean + fixed Charli3 (ODV) adapter using Mesh-style patterns
-
 import {deserializeDatum, UTxO} from "@meshsdk/core";
-import {getAddressUtxos} from "@/src/common";
+import {getAddressUtxos} from "../common.ts";
 
 // ---------------- CONFIG ----------------
 export const C3_CONFIG = {

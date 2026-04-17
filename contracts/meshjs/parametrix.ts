@@ -1,22 +1,26 @@
 import {
-  applyParamsToScript,
-  deserializeAddress,
-  resolveScriptHash,
-  KoiosProvider,
-  mAssetClass,
-  mConStr0,
-  MeshTxBuilder,
-  MeshWallet,
-  mPubKeyAddress,
-  pubKeyAddress,
-  resolvePaymentKeyHash,
-  serializePlutusScript,
-  stringToHex,
+    deserializeAddress,
+    KoiosProvider,
+    mAssetClass,
+    mConStr0,
+    MeshTxBuilder,
+    MeshWallet,
+    mPubKeyAddress,
+    pubKeyAddress,
+    resolvePaymentKeyHash,
+    resolveScriptHash,
+    scriptHash,
+    serializeAddressObj,SLOT_CONFIG_NETWORK,
+    serializePlutusScript,
+    stringToHex,unixTimeToEnclosingSlot,
+    UTxO
 } from "@meshsdk/core";
+import {applyParamsToScript, parseInlineDatum} from "@meshsdk/core-csl";
+import {builtinByteString, hexToString} from "@meshsdk/common";
+
 import {assetClass} from "@meshsdk/common";
 import blueprint from "../aiken/parametrix/plutus.json" with {type: "json"};
-
-import {getAddressUtxos} from "./common.ts";
+import {C3_CONFIG} from "./oracle/charli3Oracle.ts";
 
 
 // --------------------------------------------------
@@ -121,22 +125,36 @@ function loadScripts(
       ],
       "JSON"
   );
+    let registryPolicyId = resolveScriptHash(registryScript, 'V3');
+
 
   // ---------------- PARAMETRIX (pool validator) ----------------
-  const poolCompiled = getValidator("parametrix."); // adjust if name differs
+    const poolCompiled = getValidator("parametrix.");
 
-  const poolAddress = getScriptAddress(poolCompiled);
+    const poolIdHex = stringToHex("TEMP_POOL_ID"); // ⚠️ must match real poolId
 
-  return {
+    const poolScript = applyParamsToScript(
+        poolCompiled,
+        [
+            scriptHash(registryPolicyId),          // reg_policy_id
+            scriptHash(C3_CONFIG.policyId),    // oracle_policy_id
+            builtinByteString(poolIdHex),                 // v_pool_id
+        ],
+        "JSON"
+    );
+
+    const poolAddress = getScriptAddress(poolScript);
+    return {
     registry: {
       script: registryScript,
       address: getScriptAddress(registryScript),
-      policyId: resolveScriptHash(registryScript, 'V3')
+      policyId:registryPolicyId
     },
 
     pool: {
-      script: poolCompiled,
-      address: poolAddress,
+      script: poolScript,
+        address: getScriptAddress(poolScript),
+        policyId: resolveScriptHash(poolScript, 'V3')
     },
   };
 }
@@ -147,7 +165,6 @@ function buildPoolDatum(
     poolId: string,
     asset: { policyId: string; assetNameHex: string },
     hedgerAddr: string,
-    poolAddr: string,
     feeAddr: string,
 ) {
 
@@ -162,11 +179,10 @@ function buildPoolDatum(
     500,                                 // premium_bps
 
     Date.now(),                          // subscription_start
-    Date.now() + 600000,                 // subscription_end
-    Date.now() + 12000,                // event_time -
-    Date.now() + 18000,                // settlement_time
+    Date.now() + 60*60*24*1000,                 // subscription_end
+    Date.now() + 100,                // event_time -FOR TESTING
+    Date.now() + 100,                // settlement_time - FOR TESTING
 
-    buildMPubKeyAddress(poolAddr),              // fee_addr
     buildMPubKeyAddress(feeAddr),              // fee_addr
     500,                                 // fee__bps
   ]);
@@ -218,7 +234,6 @@ export async function createPool(
     poolId,
     asset,
     changeAddress,
-    pool.address,
     feeAddress,
   );
 
@@ -228,6 +243,7 @@ export async function createPool(
       (COVERAGE * PREMIUM_BPS) / 10_000;
 
   console.log("premium:", premium_micro_units)
+
   // ---------------- TX ----------------
   const tx = new MeshTxBuilder({}).setNetwork(NETWORK);
 
@@ -291,6 +307,78 @@ export async function createPool(
   console.log("====================\n");
 }
 
+export interface PoolDatumObject {
+    pool_id: string;                 // hex (ByteArray)
+    payment_asset: any;              // AssetClass (keep raw or type if you have one)
+    hedger: string;                 // bech32
+
+    event_type: string;             // decoded string
+    event_threshold: number;
+
+    coverage_target: number;
+    premium_bps: number;
+
+    subscription_start: number;
+    subscription_end: number;
+
+    event_time: number;
+    settlement_time: number;
+
+    fee_addr: string;               // bech32
+
+    fee_bps: number;
+}
+
+
+function parsePoolDatumFromUtxo(utxo: UTxO): PoolDatumObject {
+    const datum = parseInlineDatum<any, any>({
+        inline_datum: utxo.output.plutusData!,
+    });
+    console.dir(datum, { depth: null });
+    return {
+        pool_id: datum.fields[0].bytes,
+        payment_asset: datum.fields[1],
+        hedger: serializeAddressObj(datum.fields[2]),
+
+        event_type: hexToString(datum.fields[3].bytes),
+        event_threshold: Number(datum.fields[4].int),
+
+        coverage_target: Number(datum.fields[5].int),
+        premium_bps: Number(datum.fields[6].int),
+
+        subscription_start: Number(datum.fields[7].int),
+        subscription_end: Number(datum.fields[8].int),
+
+        event_time: Number(datum.fields[9].int),
+        settlement_time: Number(datum.fields[10].int),
+
+        fee_addr: serializeAddressObj(datum.fields[11]),
+
+        fee_bps: Number(datum.fields[12].int),
+    };
+}
+
+export function calculatePoolValidityLimit(subscriptionEnd: number) {
+    const now = Date.now();
+
+    if (now > subscriptionEnd) {
+        throw new Error("Subscription ended");
+    }
+
+    const twelveHoursFromNow = now + 12 * 60 * 60 * 1000;
+    const endWithBuffer = subscriptionEnd + 2 * 60 * 60 * 1000;
+
+    const minTimestamp = Math.min(
+        twelveHoursFromNow,
+        endWithBuffer
+    );
+
+    return unixTimeToEnclosingSlot(
+        minTimestamp,
+        SLOT_CONFIG_NETWORK.preprod
+    );
+}
+
 export async function subscribe(
     walletFile: string,
     poolId: string,
@@ -309,30 +397,41 @@ export async function subscribe(
   const asset = assetMap[paymentAssetCode];
   if (!asset) throw new Error("Unsupported asset");
 
-  const { pool, registry } = loadScripts(asset, feeAddress);
+  const { registry, pool } = loadScripts(asset, feeAddress);
 
   // ---------------- FIND REGISTRY REF INPUT ----------------
-  const registryUtxos = await getAddressUtxos(registry.address);
+  const poolUtxo =  await provider.fetchAddressUTxOs(pool.address);
 
   const nftUnit = registry.policyId + stringToHex(poolId);
 
-  const refUtxo = registryUtxos.find((u: any) =>
+  const refUtxo = poolUtxo.find((u: any) =>
       u.output.amount.some((a: any) => a.unit === nftUnit)
   );
 
   if (!refUtxo) throw new Error("Registry ref UTxO not found");
 
+    const poolDatum = parsePoolDatumFromUtxo(refUtxo);
+
+    console.log("Parsed Pool Datum:", poolDatum);
+
+
+
   const poolAddr = refUtxo.output.address;
 
   // ---------------- CALCULATIONS ----------------
-  const deposited = amount;
-  const subscribed_units = Math.floor(deposited / 1_000_000);
+  const deposited = amount * MICRO_UNITS;
+  const subscribed_units = amount
 
   if (subscribed_units <= 0) {
     throw new Error("Deposit too small for subscription unit");
   }
 
-  // ---------------- TX ----------------
+
+    const invalidHereafter = calculatePoolValidityLimit(
+        poolDatum.subscription_end
+    );
+
+    // ---------------- TX ----------------
   const collateral = (await wallet.getCollateral())[0];
 
   const tx = new MeshTxBuilder({}).setNetwork(NETWORK);
@@ -342,7 +441,7 @@ export async function subscribe(
       .mintPlutusScriptV3()
       .mint(
           subscribed_units.toString(),
-          resolveScriptHash(pool.script, "V3"),
+          pool.policyId,
           stringToHex("sPMX")
       )
       .mintingScript(pool.script)
@@ -362,7 +461,7 @@ export async function subscribe(
               "SUBSCRIPTION"
           )
       )
-
+      .invalidHereafter(invalidHereafter)
       .readOnlyTxInReference(
           refUtxo.input.txHash,
           refUtxo.input.outputIndex

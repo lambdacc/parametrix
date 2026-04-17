@@ -21,7 +21,6 @@ pub type Action {
 validator parametrix(
   reg_policy_id: PolicyId,
   oracle_policy_id: PolicyId,
-  v_hedger: Address,
   v_pool_id: ByteArray,
 ) {
   mint(redeemer: Action, policy_id: PolicyId, tx: Transaction) {
@@ -40,12 +39,6 @@ validator parametrix(
           ..
         } = reg_datum
 
-        expect and {
-            pool_id == v_pool_id,
-            valid_after(validity_range, subscription_start),
-            valid_before(validity_range, subscription_end),
-          }
-
         let pool_addr = ref_in.output.address
 
         expect [pool_out] = outputs |> outputs_at(pool_addr)
@@ -55,10 +48,9 @@ validator parametrix(
             |> quantity_of(payment_asset.asset_id, payment_asset.asset_name)
 
         let subscribed_units = deposited / 1_000_000
-
         and {
-          deposited > 0,
           only_minted_token(mint, policy_id, "sPMX", subscribed_units),
+          valid_before(validity_range, subscription_end),
         }
       }
       _ -> False
@@ -97,7 +89,6 @@ validator parametrix(
         valid_after(validity_range, subscription_start),
         valid_before(validity_range, subscription_end),
         own_address == reg_ref_in.output.address,
-        hedger == v_hedger,
       }
 
     when redeemer is {

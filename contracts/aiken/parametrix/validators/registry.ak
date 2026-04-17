@@ -25,7 +25,6 @@ validator registry(v_fee_addr: Address, v_payment_asset: AssetClass) {
       payment_asset,
       coverage_target,
       premium_bps,
-      pool_addr,
       ..
     } = pool_datum
     expect redeemer == pool_id

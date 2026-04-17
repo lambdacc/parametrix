@@ -28,7 +28,6 @@ pub type PoolDatum {
   subscription_end: Int,
   event_time: Int,
   settlement_time: Int,
-  pool_addr: Address,
   fee_addr: Address,
   fee_percentage: Int,
 }

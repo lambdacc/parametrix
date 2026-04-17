@@ -43,7 +43,6 @@ test subscribe_valid() {
       event_time: 0,
       settlement_time: 2_000,
       fee_addr: mock_pub_key_address(2, None),
-      pool_addr: script_address,
       fee_percentage: 5,
       event_type,
       event_threshold: 50,
@@ -76,7 +75,6 @@ test subscribe_valid() {
   parametrix.parametrix.mint(
     reg_policy_id,
     oracle_policy_id,
-    mock_pub_key_address(9, None),
     pool_id,
     Subscribe,
     policy_id,
@@ -102,7 +100,6 @@ test subscribe_fail_wrong_units() {
       event_time: 0,
       settlement_time: 2_000,
       fee_addr: mock_pub_key_address(2, None),
-      pool_addr: script_address,
       fee_percentage: 5,
       event_type,
       event_threshold: 50,
@@ -135,7 +132,6 @@ test subscribe_fail_wrong_units() {
   !parametrix.parametrix.mint(
     reg_policy_id,
     oracle_policy_id,
-    mock_pub_key_address(9, None),
     pool_id,
     Subscribe,
     policy_id,
@@ -172,7 +168,6 @@ test settle_success_event_occured_correct_split() {
       event_time: 0,
       settlement_time: 2_000,
       fee_addr: mock_pub_key_address(2, None),
-      pool_addr: script_address,
       fee_percentage: 5,
     }
 
@@ -274,7 +269,6 @@ test settle_success_event_occured_correct_split() {
   parametrix.parametrix.spend(
     reg_policy_id,
     oracle_policy_id,
-    hedger,
     pool_id,
     None,
     SettlePool,
@@ -313,7 +307,6 @@ test settle_success_no_event_correct_split() {
       event_time: 0,
       settlement_time: 2_000,
       fee_addr: mock_pub_key_address(2, None),
-      pool_addr: script_address,
       fee_percentage: 5,
     }
 
@@ -412,7 +405,6 @@ test settle_success_no_event_correct_split() {
   parametrix.parametrix.spend(
     reg_policy_id,
     oracle_policy_id,
-    hedger,
     pool_id,
     None,
     SettlePool,
@@ -450,7 +442,6 @@ test settle_fail_oracle_expired() {
       event_time: 0,
       settlement_time: 2_000,
       fee_addr: mock_pub_key_address(2, None),
-      pool_addr: script_address,
       fee_percentage: 5,
     }
 
@@ -557,7 +548,6 @@ test settle_fail_oracle_expired() {
   !parametrix.parametrix.spend(
     reg_policy_id,
     oracle_policy_id,
-    hedger,
     pool_id,
     None,
     SettlePool,
