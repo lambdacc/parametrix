@@ -54,7 +54,7 @@ validator parametrix(
           pool_out.value
             |> quantity_of(payment_asset.asset_id, payment_asset.asset_name)
 
-        let subscribed_units = deposited / 10_000_000
+        let subscribed_units = deposited / 1_000_000
 
         and {
           deposited > 0,
@@ -129,7 +129,7 @@ validator parametrix(
             list.all(
               data_list,
               fn(ContributionDatum { owner, amount, amount_type }) {
-                if amount_type == "SUBSCRIBER" {
+                if amount_type == "SUBSCRIPTION" {
                   let payout =
                     get_all_value_to(outputs, owner)
                       |> quantity_of(
@@ -150,7 +150,7 @@ validator parametrix(
                 data_list,
                 0,
                 fn(ContributionDatum { amount, amount_type, .. }, acc) {
-                  if amount_type == "SUBSCRIBER" {
+                  if amount_type == "SUBSCRIPTION" {
                     acc + amount
                   } else {
                     acc
@@ -169,7 +169,7 @@ validator parametrix(
               list.all(
                 data_list,
                 fn(ContributionDatum { owner, amount, amount_type }) {
-                  if amount_type == "SUBSCRIBER" {
+                  if amount_type == "SUBSCRIPTION" {
                     let payout =
                       get_all_value_to(outputs, owner)
                         |> quantity_of(

@@ -291,24 +291,139 @@ export async function createPool(
   console.log("====================\n");
 }
 
+export async function subscribe(
+    walletFile: string,
+    poolId: string,
+    amount: number,
+    paymentAssetCode: string,
+    feeAddress: string = FEE_ADDRESS
+) {
+  const wallet = loadWallet(walletFile);
+  const subscriberAddr = await wallet.getChangeAddress();
+  const subscriberPkh = resolvePaymentKeyHash(subscriberAddr);
+
+  const provider = new KoiosProvider(NETWORK);
+  const subscriberUtxos = await provider.fetchAddressUTxOs(subscriberAddr);
+  if (!subscriberUtxos.length) throw new Error("No wallet UTxOs");
+
+  const asset = assetMap[paymentAssetCode];
+  if (!asset) throw new Error("Unsupported asset");
+
+  const { pool, registry } = loadScripts(asset, feeAddress);
+
+  // ---------------- FIND REGISTRY REF INPUT ----------------
+  const registryUtxos = await getAddressUtxos(registry.address);
+
+  const nftUnit = registry.policyId + stringToHex(poolId);
+
+  const refUtxo = registryUtxos.find((u: any) =>
+      u.output.amount.some((a: any) => a.unit === nftUnit)
+  );
+
+  if (!refUtxo) throw new Error("Registry ref UTxO not found");
+
+  const poolAddr = refUtxo.output.address;
+
+  // ---------------- CALCULATIONS ----------------
+  const deposited = amount;
+  const subscribed_units = Math.floor(deposited / 1_000_000);
+
+  if (subscribed_units <= 0) {
+    throw new Error("Deposit too small for subscription unit");
+  }
+
+  // ---------------- TX ----------------
+  const collateral = (await wallet.getCollateral())[0];
+
+  const tx = new MeshTxBuilder({}).setNetwork(NETWORK);
+
+  await tx
+      // -------- mint (parametrix policy, NOT registry) --------
+      .mintPlutusScriptV3()
+      .mint(
+          subscribed_units.toString(),
+          resolveScriptHash(pool.script, "V3"),
+          stringToHex("sPMX")
+      )
+      .mintingScript(pool.script)
+      .mintRedeemerValue(mConStr0([]))
+
+      // -------- pool output --------
+      .txOut(poolAddr, [
+        {
+          unit: asset.unit,
+          quantity: deposited.toString(),
+        },
+      ])
+      .txOutInlineDatumValue(
+          buildContributionDatum(
+              subscriberAddr,
+              deposited,
+              "SUBSCRIPTION"
+          )
+      )
+
+      .readOnlyTxInReference(
+          refUtxo.input.txHash,
+          refUtxo.input.outputIndex
+      )
+
+
+      .requiredSignerHash(subscriberPkh)
+
+      .txInCollateral(
+          collateral.input.txHash,
+          collateral.input.outputIndex,
+          collateral.output.amount,
+          collateral.output.address
+      )
+
+      .changeAddress(subscriberAddr)
+      .selectUtxosFrom(subscriberUtxos)
+      .complete();
+
+  const signed = await wallet.signTx(tx.txHex, true);
+  const txHash = await wallet.submitTx(signed);
+
+  console.log("\n=== SUBSCRIBED ===");
+  console.log("Tx Hash:", txHash);
+  console.log("Pool ID:", poolId);
+  console.log("Deposited:", deposited);
+  console.log("Minted sPMX:", subscribed_units);
+  console.log("==================\n");
+}
 
 // --------------------------------------------------
 // CLI
 // --------------------------------------------------
 
 if (import.meta.main) {
-  const [cmd, wallet, asset] = Deno.args;
+  const [cmd, wallet, arg1, arg2, arg3] = Deno.args;
 
   const run = async () => {
     switch (cmd) {
       case "create":
-        await createPool(wallet, asset);
+        // arg1 = asset
+        await createPool(wallet, arg1);
+        break;
+
+      case "subscribe":
+        // arg1 = poolId
+        // arg2 = amount
+        // arg3 = asset
+        await subscribe(
+            wallet,
+            arg1,
+            Number(arg2),
+            arg3
+        );
         break;
 
       default:
         console.log(`
 Usage:
   deno run -A parametrix.ts create <wallet.json> DJED
+  deno run -A parametrix.ts subscribe <wallet.json> <poolId> <amount> DJED
 `);
     }
   };

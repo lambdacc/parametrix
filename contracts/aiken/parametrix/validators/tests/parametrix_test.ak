@@ -29,7 +29,7 @@ test subscribe_valid() {
     AssetClass { asset_id: stable_policy_id, asset_name: stable_assetname }
 
   let deposit = 20_000_000
-  let units = deposit / 10_000_000
+  let units = deposit / 1_000_000
 
   let pool_datum =
     PoolDatum {
@@ -182,7 +182,7 @@ test settle_success_event_occured_correct_split() {
         ContributionDatum {
           owner: subscriber,
           amount,
-          amount_type: "SUBSCRIBER",
+          amount_type: "SUBSCRIPTION",
         },
       ],
     }
@@ -323,7 +323,7 @@ test settle_success_no_event_correct_split() {
         ContributionDatum {
           owner: subscriber,
           amount,
-          amount_type: "SUBSCRIBER",
+          amount_type: "SUBSCRIPTION",
         },
       ],
     }
@@ -460,7 +460,7 @@ test settle_fail_oracle_expired() {
         ContributionDatum {
           owner: subscriber,
           amount,
-          amount_type: "SUBSCRIBER",
+          amount_type: "SUBSCRIPTION",
         },
       ],
     }
