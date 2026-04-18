@@ -1,6 +1,6 @@
 "use client";
 
-import { createPool } from "@/lib/meshjs/parametrix-offchain";
+import {createPool} from "@/lib/meshjs/parametrix-offchain";
 
 export async function createPoolContract(
     wallet: any,
@@ -13,18 +13,18 @@ export async function createPoolContract(
         feeAddress?: string;
     }
 ) {
-    const { unsignedTx, poolId } = await createPool(
+    const {unsignedTx, poolId} = await createPool(
         wallet,
         params.paymentAssetCode,
         params.eventType,
-            params.coverage,
-            params.premiumBps,
-            params.threshold,
-
+        params.coverage,
+        params.premiumBps,
+        params.threshold,
     );
 
     const signedTx = await wallet.signTx(unsignedTx, true);
     const txHash = await wallet.submitTx(signedTx);
 
-    return { txHash, poolId };
+    console.log("txHash:",txHash)
+    return {txHash, poolId};
 }

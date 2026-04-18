@@ -1,1 +1,1 @@
-export const FALLBACK_BLOCKFROST_KEY="preprodxxx"
+export const FALLBACK_BLOCKFROST_KEY = "preprodwDTcFQzIoD9q7j5yCqfd94zbGGx5YWrK";

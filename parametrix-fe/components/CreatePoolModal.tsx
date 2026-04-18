@@ -71,7 +71,8 @@ export default function CreatePoolModal({ open, onClose }: any) {
     const preview = `${risk.replace("_", " ")} > ${threshold}, ${coverage} ${asset}, Premium ${premium / 100}%`;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="min-h-full flex items-start justify-center p-6">
             {/* overlay */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -244,6 +245,7 @@ export default function CreatePoolModal({ open, onClose }: any) {
 
                 </div>
             </div>
+        </div>
         </div>
     );
 }

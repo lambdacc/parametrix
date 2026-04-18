@@ -13,9 +13,8 @@ import {
     serializeAddressObj, SLOT_CONFIG_NETWORK,
     serializePlutusScript,
     stringToHex, unixTimeToEnclosingSlot,applyParamsToScript,
-    UTxO
+        UTxO,deserializeDatum
 } from "@meshsdk/core";
-import {parseInlineDatum} from "@meshsdk/core-csl";
 import {builtinByteString, hexToString} from "@meshsdk/common";
 
 import {assetClass} from "@meshsdk/common";
@@ -354,9 +353,8 @@ export interface PoolDatumObject {
 
 
 function parsePoolDatumFromUtxo(utxo: UTxO): PoolDatumObject {
-    const datum = parseInlineDatum<any, any>({
-        inline_datum: utxo.output.plutusData!,
-    });
+    const datum = deserializeDatum(utxo.output.plutusData!)
+
     console.dir(datum, {depth: null});
     return {
         pool_id: datum.fields[0].bytes,
@@ -531,10 +529,7 @@ export interface ParsedContributionUtxo {
 
 function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
     try {
-        const d = parseInlineDatum<any, any>({
-            inline_datum: u.output.plutusData!,
-        });
-
+        const d = deserializeDatum(u.output.plutusData);
         // expect ConStr0([List<ContributionDatum>])
         if (
             d.constructor !== 0 ||

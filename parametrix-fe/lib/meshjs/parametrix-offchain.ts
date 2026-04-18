@@ -12,16 +12,16 @@ import {
     serializeAddressObj, SLOT_CONFIG_NETWORK,
     serializePlutusScript,
     stringToHex, unixTimeToEnclosingSlot,
-    UTxO
+    UTxO, BlockfrostProvider,applyParamsToScript,deserializeDatum
 } from "@meshsdk/core";
 
-import {applyParamsToScript, parseInlineDatum} from "@meshsdk/core-csl";
 import {builtinByteString, hexToString} from "@meshsdk/common";
 import {assetClass} from "@meshsdk/common";
 
 import blueprint from "../plutus.json" with {type: "json"};
 import {C3_CONFIG, getC3OracleData} from "../oracle/charli3Oracle";
 import {getWalletInfoForTx} from "@/lib/meshjs/wallet-util";
+import {blockchainProvider, getTxBuilder} from "@/lib/common";
 
 const NETWORK = 'preprod';
 const NETWORK_ID = 0;
@@ -97,8 +97,8 @@ function loadScripts(asset: any, feeAddrBech32: string, poolId: string) {
     const registryScript = applyParamsToScript(
         registryCompiled,
         [
-            feeAddr,
-            paymentAsset,
+            feeAddr,        // v_fee_addr
+            paymentAsset,   // v_payment_asset
         ],
         "JSON"
     );
@@ -195,7 +195,10 @@ function buildContributionDatum(ownerAddr: string, amount: number, amount_type: 
     ]);
 }
 
-// ================= CREATE =================
+
+// --------------------------------------------------
+// CREATE POOL (MINT)
+// --------------------------------------------------
 
 export async function createPool(
     wallet: any,
@@ -214,11 +217,14 @@ export async function createPool(
         threshold,
         feeAddress,
     });
-    const {utxos, collateral, changeAddress} = await getWalletInfoForTx(wallet);
-    console.log("changeAddress:", changeAddress)
-    const hedgerPkh = resolvePaymentKeyHash(changeAddress);
+    const {collateral, walletAddress} = await getWalletInfoForTx(wallet);
+    console.log("walletAddress", walletAddress)
+    const hedgerPkh = resolvePaymentKeyHash(walletAddress);
     const poolId = `${hedgerPkh.slice(0, 3)}-${Date.now()}`;
 
+
+    const provider = blockchainProvider;
+    const utxos = await provider.fetchAddressUTxOs(walletAddress);
     if (!utxos.length) throw new Error('No wallet UTxOs');
 
     // @ts-ignore
@@ -229,10 +235,11 @@ export async function createPool(
 
     const coverageAmount = coverage * MICRO_UNITS; // human → onchain
 
+    // ---------------- DATUM ----------------
     const datum = buildPoolDatum(
         poolId,
         asset,
-        changeAddress,
+        walletAddress,
         eventType,
         threshold,
         coverageAmount,
@@ -240,13 +247,9 @@ export async function createPool(
         feeAddress
     );
 
-    const premium_micro_units = (COVERAGE * PREMIUM_BPS) / 10_000;
-    const provider = new KoiosProvider(NETWORK);
-    const tx = new MeshTxBuilder({
-        fetcher: provider,
-        submitter: provider,
-        evaluator: provider
-    }).setNetwork(NETWORK);
+    const premium_micro_units = (coverageAmount * premiumBps) / 10_000;
+
+    const tx = getTxBuilder()
 
     try {
         await tx
@@ -271,7 +274,7 @@ export async function createPool(
                 quantity: premium_micro_units.toString(),
             },
         ])
-            .txOutInlineDatumValue(buildContributionDatum(changeAddress, premium_micro_units, "PREMIUM"))
+            .txOutInlineDatumValue(buildContributionDatum(walletAddress, premium_micro_units, "PREMIUM"))
 
             .requiredSignerHash(hedgerPkh)
 
@@ -282,7 +285,7 @@ export async function createPool(
             collateral!.output.address
         )
 
-            .changeAddress(changeAddress)
+            .changeAddress(walletAddress)
             .selectUtxosFrom(utxos)
             .complete();
     } catch (e) {
