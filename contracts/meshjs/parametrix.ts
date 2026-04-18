@@ -179,7 +179,7 @@ function buildPoolDatum(
 
         buildMPubKeyAddress(hedgerAddr),              // hedger (protection buyer)
 
-        eventType,                                    // oracle event type (rainfall / flight)
+        eventType,                                    // oracle event type (RAINFALL_EXCEEDED / FLIGHT_DELAY)
 
         threshold,                                    // value required to trigger payout
 
@@ -353,9 +353,10 @@ export interface PoolDatumObject {
 
 
 function parsePoolDatumFromUtxo(utxo: UTxO): PoolDatumObject {
+    // console.log("inspect");
+    // console.dir(utxo.output.plutusData, { depth: null });
     const datum = deserializeDatum(utxo.output.plutusData!)
-
-    console.dir(datum, {depth: null});
+    //console.dir(datum, {depth: null});
     return {
         pool_id: datum.fields[0].bytes,
         payment_asset: datum.fields[1],
@@ -421,11 +422,11 @@ export async function subscribe(
     const {registry, pool} = loadScripts(asset, feeAddress, poolId);
 
     // ---------------- FIND REGISTRY REF INPUT ----------------
-    const poolUtxo = await provider.fetchAddressUTxOs(pool.address);
+    const poolUtxos = await provider.fetchAddressUTxOs(pool.address);
 
     const nftUnit = registry.policyId + stringToHex(poolId);
 
-    const refUtxo = poolUtxo.find((u: any) =>
+    const refUtxo = poolUtxos.find((u: any) =>
         u.output.amount.some((a: any) => a.unit === nftUnit)
     );
 
@@ -437,6 +438,7 @@ export async function subscribe(
 
 
     const poolAddr = refUtxo.output.address;
+    console.log("poolAddr:", poolAddr);
 
     // ---------------- CALCULATIONS ----------------
     const deposited = amount * MICRO_UNITS;
@@ -526,30 +528,48 @@ export interface ParsedContributionUtxo {
     utxo: any;
     contributions: ContributionDatumObject[];
 }
-
 function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
     try {
+        if (!u.output.plutusData) return null;
+
         const d = deserializeDatum(u.output.plutusData);
-        // expect ConStr0([List<ContributionDatum>])
+
+        // normalize constructor (bigint → number)
+        const ctor = Number(d.constructor);
+
         if (
-            d.constructor !== 0 ||
-            !Array.isArray(d.fields) ||
-            !Array.isArray(d.fields[0]?.list)
+            ctor !== 0 ||
+            !Array.isArray(d.fields)
         ) {
             return null;
         }
 
-        const list = d.fields[0].list;
+        const field0 = d.fields[0];
 
-        const contributions = list.map((d: any) => {
-            if (d.constructor !== 0 || d.fields.length !== 3) {
+        // 🔁 emulate CSL `.list`
+        const list = Array.isArray(field0)
+            ? field0
+            : field0?.list;
+
+        if (!Array.isArray(list)) {
+            return null;
+        }
+
+        const contributions = list.map((item: any) => {
+            const innerCtor = Number(item.constructor);
+
+            if (
+                innerCtor !== 0 ||
+                !Array.isArray(item.fields) ||
+                item.fields.length !== 3
+            ) {
                 throw new Error("Invalid ContributionDatum shape");
             }
 
             return {
-                owner: serializeAddressObj(d.fields[0]),
-                amount: Number(d.fields[1].int),
-                amount_type: hexToString(d.fields[2].bytes),
+                owner: serializeAddressObj(item.fields[0]),
+                amount: Number(item.fields[1].int),
+                amount_type: hexToString(item.fields[2].bytes),
             };
         });
 
@@ -557,7 +577,8 @@ function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
             utxo: u,
             contributions,
         };
-    } catch {
+    } catch (e) {
+        console.log("parse fail:", e);
         return null;
     }
 }
@@ -621,12 +642,12 @@ export async function settle(
 
     for (const p of fundingPoolUtxoDatumPairs) {
         for (const c of p.contributions) {
-            if (c.amount_type === "PREMIUM") {
+            if (c.amount_type == "PREMIUM") {
                 premiumUtxoDatumPair = p;
                 break;
             }
 
-            if (c.amount_type === "SUBSCRIPTION") {
+            if (c.amount_type == "SUBSCRIPTION") {
                 subscriptionUtxosDatumPairs.push(p);
                 break;
             }
@@ -819,6 +840,7 @@ if (import.meta.main) {
                 console.log(`
 Usage:
   deno run -A parametrix.ts create <wallet.json> DJED RAINFALL_EXCEEDED
+  deno run -A parametrix.ts create <wallet.json> DJED FLIGHT_DELAY
   deno run -A parametrix.ts subscribe <wallet.json> <poolId> <amount> DJED
   deno run -A parametrix.ts settle <wallet.json> <poolId> DJED
 `);

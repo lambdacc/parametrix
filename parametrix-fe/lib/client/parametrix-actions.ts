@@ -13,20 +13,37 @@ export async function createPoolContract(
         feeAddress?: string;
     }
 ) {
-    const {unsignedTx, poolId} = await createPool(
-        wallet,
-        params.paymentAssetCode,
-        params.eventType,
-        params.coverage,
-        params.premiumBps,
-        params.threshold,
-    );
+    const {
+        unsignedTx,
+        poolId,
+        poolAddress,
+        paymentAssetCode,
+        feeAddress,
+        registryPolicyId,
+        tokenNameHex,
+        hedgerAddress
+    } =
+        await createPool(
+            wallet,
+            params.paymentAssetCode,
+            params.eventType,
+            params.coverage,
+            params.premiumBps,
+            params.threshold,
+        );
 
     const signedTx = await wallet.signTx(unsignedTx, true);
     const txHash = await wallet.submitTx(signedTx);
 
-    console.log("txHash:",txHash)
-    return {txHash, poolId};
+    console.log("txHash:", txHash)
+    return {
+        txHash, poolId, poolAddress,
+        paymentAssetCode,
+        feeAddress,
+        registryPolicyId,
+        tokenNameHex,
+        hedgerAddress,
+    };
 }
 
 export async function subscribeContract(
@@ -38,18 +55,19 @@ export async function subscribeContract(
         feeAddress?: string;
     }
 ) {
-    const  unsignedTx  = await subscribe(
+    const unsignedTx = await subscribe(
         wallet,
         params.poolId,
         params.amount,
         params.paymentAssetCode,
         params.feeAddress
     );
+    console.log("unsignedTx:", unsignedTx);
 
-    const signedTx = await wallet.signTx(unsignedTx, true);
+    const signedTx = await wallet.signTx(unsignedTx);
     const txHash = await wallet.submitTx(signedTx);
 
     console.log("txHash:", txHash);
 
-    return { txHash };
+    return {txHash};
 }

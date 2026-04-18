@@ -3,6 +3,7 @@
 import Hero from "@/components/Hero";
 import PoolGrid from "@/components/PoolGrid";
 import HeroSectionWrapper from "@/components/HeroSectionWrapper";
+import OracleRefresh from "@/components/OracleRefresh";
 
 export default function Home() {
     return (
@@ -11,6 +12,8 @@ export default function Home() {
                 <Hero />
             </HeroSectionWrapper>
 
+
+            <OracleRefresh />
 
             <section className="relative py-16 bg-gradient-to-br from-[#ffffff] via-[#eef2ff] to-[#e0f2fe]">
 

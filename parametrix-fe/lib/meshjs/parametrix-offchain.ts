@@ -292,7 +292,25 @@ export async function createPool(
         console.error(e)
     }
 
-    return {unsignedTx: tx.txHex, poolId: poolId};
+    return {
+        unsignedTx: tx.txHex,
+        poolId,
+
+        // for reference
+        poolAddress: pool.address,
+        paymentAssetCode,
+        feeAddress,
+
+        // script / NFT identity
+        registryPolicyId: registry.policyId,
+        tokenNameHex: stringToHex(poolId),
+
+        // useful context
+        hedgerAddress: walletAddress,
+        coverage,
+        premiumBps,
+        threshold,
+    };
 }
 
 
@@ -394,13 +412,23 @@ export async function subscribe(
     if (!asset) throw new Error("Unsupported asset");
 
     const {registry, pool} = loadScripts(asset, feeAddress, poolId);
+    console.log("---- SCRIPT DERIVATION ----");
+    console.log("poolId:", poolId);
+    console.log("feeAddress:", feeAddress);
+    console.log("registry.policyId:", registry.policyId);
+    console.log("pool.address:", pool.address);
 
     // ---------------- FIND REGISTRY REF INPUT ----------------
-    const poolUtxo = await provider.fetchAddressUTxOs(pool.address);
+    const poolUtxos = await provider.fetchAddressUTxOs(pool.address);
+    console.log("---- POOL UTXOS ----");
+    console.log("poolUtxo count:", poolUtxos.length);
 
     const nftUnit = registry.policyId + stringToHex(poolId);
+    // console.log("---- NFT EXPECTATION ----");
+    // console.log("tokenNameHex:", stringToHex(poolId));
+    // console.log("expected nftUnit:", nftUnit);
 
-    const refUtxo = poolUtxo.find((u: any) =>
+    const refUtxo = poolUtxos.find((u: any) =>
         u.output.amount.some((a: any) => a.unit === nftUnit)
     );
 
@@ -408,7 +436,7 @@ export async function subscribe(
 
     const poolDatum = parsePoolDatumFromUtxo(refUtxo);
 
-    console.log("Parsed Pool Datum:", poolDatum);
+    //console.log("Parsed Pool Datum:", poolDatum);
 
     const poolAddr = refUtxo.output.address;
 
@@ -465,16 +493,16 @@ export async function subscribe(
         .requiredSignerHash(subscriberPkh)
 
         .txInCollateral(
-            collateral!.input.txHash,
-            collateral!.input.outputIndex,
-            collateral!.output.amount,
-            collateral!.output.address
+            collateral.input.txHash,
+            collateral.input.outputIndex,
+            collateral.output.amount,
+            collateral.output.address
         )
 
         .changeAddress(subscriberAddr)
         .selectUtxosFrom(subscriberUtxos)
         .complete();
 
-
+    console.log("Tx built")
     return { unsignedTx: tx.txHex }; // ✅ changed
 }

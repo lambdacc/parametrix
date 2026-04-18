@@ -42,7 +42,13 @@ export default function CreatePoolModal({ open, onClose }: any) {
         try {
             setLoading(true);
 
-            const { txHash, poolId } = await createPoolContract(wallet, {
+            const { txHash, poolId, poolAddress,
+                paymentAssetCode,
+                feeAddress,
+                registryPolicyId,
+                tokenNameHex,
+                hedgerAddress,
+                } = await createPoolContract(wallet, {
                 eventType: risk,
                 paymentAssetCode: asset,
                 coverage,
@@ -57,8 +63,23 @@ export default function CreatePoolModal({ open, onClose }: any) {
                     poolId,
                     txHash,
                     createdAt: Date.now(),
-                    config: { risk, coverage, premium, asset, threshold },
-                }),
+
+                    payment_asset_code: paymentAssetCode,
+                    fee_address: feeAddress,
+
+                    pool_address: poolAddress,
+                    registry_policy_id: registryPolicyId,
+                    token_name_hex: tokenNameHex,
+                    hedger_address: hedgerAddress,
+
+                    // business config
+                    config: {
+                        risk,
+                        coverage,
+                        premium,
+                        threshold,
+                    },
+                })
             });
 
             onClose();

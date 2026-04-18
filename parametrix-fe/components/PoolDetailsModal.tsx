@@ -33,7 +33,7 @@ export default function PoolDetailsModal({
             const { txHash } = await subscribeContract(wallet, {
                 poolId: pool.poolId,
                 amount: Number(amount),
-                paymentAssetCode: pool.payment_asset_code || "ADA",
+                paymentAssetCode: pool.payment_asset_code || "DJED",
             });
 
             console.log("Subscribed:", txHash);

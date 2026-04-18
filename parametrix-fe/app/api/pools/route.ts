@@ -6,7 +6,17 @@ const filePath = path.join(process.cwd(), "data/pools.json");
 
 function read() {
     if (!fs.existsSync(filePath)) return [];
-    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+
+    const raw = fs.readFileSync(filePath, "utf-8").trim();
+
+    if (!raw) return []; // ✅ empty file safe
+
+    try {
+        return JSON.parse(raw);
+    } catch (e) {
+        console.error("Invalid JSON in pools file, resetting:", e);
+        return []; // ✅ prevents crash
+    }
 }
 
 function write(data: any[]) {
