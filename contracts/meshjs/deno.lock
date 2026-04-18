@@ -2,9 +2,9 @@
   "version": "5",
   "specifiers": {
     "npm:@cardano-sdk/crypto@0.2.2": "0.2.2",
-    "npm:@meshsdk/common@1.9.0-beta.95": "1.9.0-beta.95",
-    "npm:@meshsdk/core-csl@1.9.0-beta.95": "1.9.0-beta.95",
-    "npm:@meshsdk/core@1.9.0-beta.95": "1.9.0-beta.95"
+    "npm:@meshsdk/common@1.9.0-beta.100": "1.9.0-beta.100",
+    "npm:@meshsdk/core-csl@1.9.0-beta.100": "1.9.0-beta.100",
+    "npm:@meshsdk/core@1.9.0-beta.100": "1.9.0-beta.100"
   },
   "npm": {
     "@biglup/is-cid@1.0.3": {
@@ -15,12 +15,6 @@
         "iso-url",
         "multiformats",
         "uint8arrays"
-      ]
-    },
-    "@bitcoin-js/tiny-secp256k1-asmjs@2.2.4": {
-      "integrity": "sha512-Lo62disBIDwPrYAmMsSjEmqak41yb0OFGQVLdktXmcQLgtC1BI5Sd1eHSxNREKZmxMUXevtsgEhGB1DvvatRmQ==",
-      "dependencies": [
-        "uint8array-tools@0.0.7"
       ]
     },
     "@bufbuild/protobuf@1.10.1": {
@@ -104,8 +98,8 @@
         "webextension-polyfill"
       ]
     },
-    "@cardano-sdk/input-selection@0.14.29": {
-      "integrity": "sha512-HrAQJwBgIsjj/bFRB4K2soGkIOiVWTyPWiUs02RMxXVql4dGGgFbtBSfwfhoUxUBDAHX10j5dAKNBRbYB+ax+A==",
+    "@cardano-sdk/input-selection@0.14.28": {
+      "integrity": "sha512-pbysJUaIbbpesbv/f0XfFPKBb+bLjCmPcMfNJzpePSZBvr8bUcFpnfKtq28KthVdpe2mgL3k9ebTTcBSk7aERw==",
       "dependencies": [
         "@cardano-sdk/core",
         "@cardano-sdk/key-management",
@@ -280,8 +274,8 @@
     "@leichtgewicht/ip-codec@2.0.5": {
       "integrity": "sha512-Vo+PSpZG2/fmgmiNzYK9qWRh8h/CHrwD0mo1h1DzL4yzHNSfWYujGTYsWGreD000gcgmZ7K4Ys6Tx9TxtsKdDw=="
     },
-    "@libp2p/interface@3.2.0": {
-      "integrity": "sha512-gaG4MeZ294A5VrgEaaBAW/bWse76ZCwmFQ5v8urVNQOgunF3M28zXi41MVFhYMOXlBWsOUY2OUYY1Nw3wkq44w==",
+    "@libp2p/interface@3.2.2": {
+      "integrity": "sha512-IU78g6uF8Ls0//4v9VE1rL5Jvy+i6I8LI/DssojFICbaDJSkL59Sn5XRfHrY5OCxTnUnUxnWK7pHz/3+UZcRNQ==",
       "dependencies": [
         "@multiformats/dns",
         "@multiformats/multiaddr@13.0.1",
@@ -291,19 +285,8 @@
         "uint8arraylist"
       ]
     },
-    "@meshsdk/bitcoin@1.9.0-beta.95": {
-      "integrity": "sha512-pxj7QkTBkMd9JKuo/rY+KfimL9NxO4asQZ+ZFC9dQkX19Xk2sdW1o7iFO0MiNJ6I0iGt4ppY1/VEwzspMQXZ+w==",
-      "dependencies": [
-        "@bitcoin-js/tiny-secp256k1-asmjs",
-        "bip174@3.0.0",
-        "bip32",
-        "bip39",
-        "bitcoinjs-lib",
-        "ecpair"
-      ]
-    },
-    "@meshsdk/common@1.9.0-beta.95": {
-      "integrity": "sha512-uAoImLm6wfQFU24c/zd5t/ra1NccvJ/GP227Oy7LB5gl4gKdM8NyQzmcQH1z5TQxpZEkXCx2We2B1BPGkwUjkA==",
+    "@meshsdk/common@1.9.0-beta.100": {
+      "integrity": "sha512-H3ktKR9eheRKZupg7DLdUr8A9dsefJbu7Wc+I1suwrv+oAZWiJ2wCuF3bX2QQo3LyWrSkVCE7WEiKFfQmukIww==",
       "dependencies": [
         "bech32",
         "bip39",
@@ -311,10 +294,19 @@
         "blakejs"
       ]
     },
-    "@meshsdk/core-csl@1.9.0-beta.95": {
-      "integrity": "sha512-2Q8ZkpDM4masanI6Kfz09EmtgAd3yOumyN71IJ6pMuLLLY+Zod0VMidK9PxVXp5LTRSjhUL5eJ35PG3TQcnuuw==",
+    "@meshsdk/common@1.9.0-beta.99": {
+      "integrity": "sha512-ySo/s+rXJn3agNEJ6Rtmoo8KtgmohW81/9GU/QtJb1nqmjwRB8CJfJUZypxZ+CtdRSRGf9OupwBL+9mbTIPlrA==",
       "dependencies": [
-        "@meshsdk/common",
+        "bech32",
+        "bip39",
+        "blake2b",
+        "blakejs"
+      ]
+    },
+    "@meshsdk/core-csl@1.9.0-beta.100": {
+      "integrity": "sha512-FNJXCEmtF8W6SH1ie8iFomc+enBDC0aTEbZu4kKrkX3JlXpthWV4pCWAfvJkIr2o4eNNwSedpnJhMZHweiVkxw==",
+      "dependencies": [
+        "@meshsdk/common@1.9.0-beta.100",
         "@sidan-lab/whisky-js-browser",
         "@sidan-lab/whisky-js-nodejs",
         "@types/base32-encoding",
@@ -323,8 +315,8 @@
         "json-bigint"
       ]
     },
-    "@meshsdk/core-cst@1.9.0-beta.95_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0": {
-      "integrity": "sha512-dzQojjubYT+JLDqNGkNwrYHx1rToHhIVYhFJ/s/BrHroxNff6EDuYRlWm5UnB8+GK9qKzJTLDcR03H60EVgUxw==",
+    "@meshsdk/core-cst@1.9.0-beta.100_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0": {
+      "integrity": "sha512-gXC7c81puzv12C3xJ6vhH/KIEc/P6ScuXsgmLlqFMpDv0SuoMg+42HgdyWi0WrccVwi8cdepsn5YhtCaYVn0nw==",
       "dependencies": [
         "@cardano-sdk/core",
         "@cardano-sdk/crypto@0.4.5",
@@ -334,59 +326,77 @@
         "@harmoniclabs/pair",
         "@harmoniclabs/plutus-data",
         "@harmoniclabs/uplc",
-        "@meshsdk/common",
+        "@meshsdk/common@1.9.0-beta.100",
         "@types/base32-encoding",
         "base32-encoding",
         "bech32",
         "blakejs",
         "bn.js",
-        "libsodium-wrappers-sumo@0.7.15"
+        "hash.js",
+        "scalus"
       ]
     },
-    "@meshsdk/core@1.9.0-beta.95": {
-      "integrity": "sha512-3CMFxp0mVNeHz9A7Eaqj7ZBHS/ldTF9W3Zrs4RSyRPYrrdngq6o/06vH3rDgYo+EBGsHLfk+d9wEaH/PnuIZ1g==",
+    "@meshsdk/core-cst@1.9.0-beta.99_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0": {
+      "integrity": "sha512-sAdxOUqz3Qo7+6uz+/gD/uebWcwR6Eljybc2zvJT6QZBsJYeM1UCKO6ui15yedqEfnnDxdQJYSfRtXZPR1FXag==",
       "dependencies": [
-        "@meshsdk/common",
-        "@meshsdk/core-cst",
+        "@cardano-sdk/core",
+        "@cardano-sdk/crypto@0.4.5",
+        "@cardano-sdk/input-selection",
+        "@cardano-sdk/util@0.17.1",
+        "@harmoniclabs/cbor",
+        "@harmoniclabs/pair",
+        "@harmoniclabs/plutus-data",
+        "@harmoniclabs/uplc",
+        "@meshsdk/common@1.9.0-beta.99",
+        "@types/base32-encoding",
+        "base32-encoding",
+        "bech32",
+        "blakejs",
+        "bn.js",
+        "hash.js",
+        "libsodium-wrappers-sumo@0.7.15",
+        "scalus"
+      ]
+    },
+    "@meshsdk/core@1.9.0-beta.100": {
+      "integrity": "sha512-Og/sDKUkeoJdbPtiXVOOBZ3/9M4mp1JVqq7YPPZl/uYjUa/1A0n0lW3uKVOrrA9gHqsA0n6EAzvsI2aOoD2I6g==",
+      "dependencies": [
+        "@meshsdk/common@1.9.0-beta.100",
+        "@meshsdk/core-cst@1.9.0-beta.100_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0",
         "@meshsdk/provider",
         "@meshsdk/transaction",
-        "@meshsdk/wallet",
-        "libsodium-wrappers-sumo@0.7.15"
+        "@meshsdk/wallet"
       ]
     },
-    "@meshsdk/provider@1.9.0-beta.95": {
-      "integrity": "sha512-iZy8MP33Wj2HY6mxn8Vs+d/KcopfVCEc7emdX/ojf8zvjo4Rq+p5j0mxA6Kwl/9+B1PB+aKqBEiR96aKVUi8pw==",
+    "@meshsdk/provider@1.9.0-beta.99": {
+      "integrity": "sha512-Aa5vlByjDeUYJMfhqnuJ53VfoSFmD+k5P42HVIQPuyrA02txzdh6NFwh0NIxFDL+pMJer9vo27D7Jsc+ShAuoA==",
       "dependencies": [
-        "@meshsdk/bitcoin",
-        "@meshsdk/common",
-        "@meshsdk/core-cst",
+        "@meshsdk/common@1.9.0-beta.99",
+        "@meshsdk/core-cst@1.9.0-beta.99_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0",
         "@utxorpc/sdk",
         "@utxorpc/spec",
         "axios",
-        "cbor",
-        "libsodium-wrappers-sumo@0.7.15"
+        "cbor"
       ]
     },
-    "@meshsdk/transaction@1.9.0-beta.95": {
-      "integrity": "sha512-s8gwP/GVS89l0hRvG9M0rAn60lGF09J16qq+v8X7qHvwnBGlmAS4bHQgJf4sUXORs1aehTfyuNwarAD9cUQD+A==",
+    "@meshsdk/transaction@1.9.0-beta.100": {
+      "integrity": "sha512-ayPDbDJ0FFDdF0sU/+ylTlmfnzS0dqDyL3f29opfMEfA8PdZo+Rs6Gj0ojNVrPkXgNhPlscCWSRWmH0vT9bZ/w==",
       "dependencies": [
         "@cardano-sdk/core",
         "@cardano-sdk/input-selection",
         "@cardano-sdk/util@0.17.1",
-        "@meshsdk/common",
-        "@meshsdk/core-cst",
-        "json-bigint",
-        "libsodium-wrappers-sumo@0.7.15"
+        "@meshsdk/common@1.9.0-beta.100",
+        "@meshsdk/core-cst@1.9.0-beta.100_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0",
+        "json-bigint"
       ]
     },
-    "@meshsdk/wallet@1.9.0-beta.95": {
-      "integrity": "sha512-lGYZkHO4VneYVeerdoaQ4oBnp1ONCIrjaNbfZW4PNq02u2TnGHwvP7cKqQyJ7pKLGAzCUbZmuhBNRDmX/pfOLQ==",
+    "@meshsdk/wallet@1.9.0-beta.100": {
+      "integrity": "sha512-vM1s0myHpvQmov0Sx1D4KWFosYyChLgYpIbC+fWJaUK7vV0Qu+hapZinrGqg+Zyp90evxuZZLU7pO2aDClOaXg==",
       "dependencies": [
-        "@meshsdk/common",
-        "@meshsdk/core-cst",
+        "@meshsdk/common@1.9.0-beta.100",
+        "@meshsdk/core-cst@1.9.0-beta.100_@harmoniclabs+cbor@1.6.0_@harmoniclabs+pair@1.0.0_@harmoniclabs+plutus-data@1.2.6__@harmoniclabs+bytestring@1.0.0__@harmoniclabs+cbor@1.6.0",
         "@meshsdk/transaction",
-        "@simplewebauthn/browser",
-        "libsodium-wrappers-sumo@0.7.15"
+        "@simplewebauthn/browser"
       ]
     },
     "@multiformats/dns@1.0.13": {
@@ -499,15 +509,6 @@
     "b4a@1.8.0": {
       "integrity": "sha512-qRuSmNSkGQaHwNbM7J78Wwy+ghLEYF1zNrSeMxj4Kgw6y33O3mXcQ6Ie9fRvfU/YnxWkOchPXbaLb73TkIsfdg=="
     },
-    "base-x@3.0.11": {
-      "integrity": "sha512-xz7wQ8xDhdyP7tQxwdteLYeFfS68tSMNCZ/Y37WJ4bhGfKPpqEIlmIyueQHqOyoPhE6xNUqjzRr8ra0eF9VRvA==",
-      "dependencies": [
-        "safe-buffer@5.2.1"
-      ]
-    },
-    "base-x@4.0.1": {
-      "integrity": "sha512-uAZ8x6r6S3aUM9rbHGVOIsR15U/ZSc82b3ymnCPsT45Gk1DDvhDPdIgB5MrhirZWt+5K0EEPQH985kNqZgNPFw=="
-    },
     "base32-encoding@1.0.0": {
       "integrity": "sha512-k1gA7f00ODLY7YtuEQFz0Kn3huTCmL/JW+oQtw51ID+zxs5chj/YQ1bXN+Q0JsqiKB2Yn0oA0AA8uipFYgpagQ=="
     },
@@ -526,40 +527,10 @@
         "file-uri-to-path"
       ]
     },
-    "bip174@2.1.1": {
-      "integrity": "sha512-mdFV5+/v0XyNYXjBS6CQPLo9ekCx4gtKZFnJm5PMto7Fs9hTTDpkkzOB7/FtluRI6JbUUAu+snTYfJRgHLZbZQ=="
-    },
-    "bip174@3.0.0": {
-      "integrity": "sha512-N3vz3rqikLEu0d6yQL8GTrSkpYb35NQKWMR7Hlza0lOj6ZOlvQ3Xr7N9Y+JPebaCVoEUHdBeBSuLxcHr71r+Lw==",
-      "dependencies": [
-        "uint8array-tools@0.0.9",
-        "varuint-bitcoin@2.0.0"
-      ]
-    },
-    "bip32@4.0.0": {
-      "integrity": "sha512-aOGy88DDlVUhspIXJN+dVEtclhIsfAUppD43V0j40cPTld3pv/0X/MlrZSZ6jowIaQQzFwP8M6rFU2z2mVYjDQ==",
-      "dependencies": [
-        "@noble/hashes",
-        "@scure/base",
-        "typeforce",
-        "wif"
-      ]
-    },
     "bip39@3.1.0": {
       "integrity": "sha512-c9kiwdk45Do5GL0vJMe7tS95VjCii65mYAH7DfWl3uW8AVzXKQVUm64i3hzVybBDMp9r7j9iNxR85+ul8MdN/A==",
       "dependencies": [
         "@noble/hashes"
-      ]
-    },
-    "bitcoinjs-lib@6.1.7": {
-      "integrity": "sha512-tlf/r2DGMbF7ky1MgUqXHzypYHakkEnm0SZP23CJKIqNY/5uNAnMbFhMJdhjrL/7anfb/U8+AlpdjPWjPnAalg==",
-      "dependencies": [
-        "@noble/hashes",
-        "bech32",
-        "bip174@2.1.1",
-        "bs58check@3.0.1",
-        "typeforce",
-        "varuint-bitcoin@1.1.2"
       ]
     },
     "blake2b-wasm@2.4.0": {
@@ -581,33 +552,6 @@
     },
     "bn.js@5.2.3": {
       "integrity": "sha512-EAcmnPkxpntVL+DS7bO1zhcZNvCkxqtkd0ZY53h06GNQ3DEkkGZ/gKgmDv6DdZQGj9BgfSPKtJJ7Dp1GPP8f7w=="
-    },
-    "bs58@4.0.1": {
-      "integrity": "sha512-Ok3Wdf5vOIlBrgCvTq96gBkJw+JUEzdBgyaza5HLtPm7yTHkjRy8+JzNyHF7BHa0bNWOQIp3m5YF0nnFcOIKLw==",
-      "dependencies": [
-        "base-x@3.0.11"
-      ]
-    },
-    "bs58@5.0.0": {
-      "integrity": "sha512-r+ihvQJvahgYT50JD05dyJNKlmmSlMoOGwn1lCcEzanPglg7TxYjioQUYehQ9mAR/+hOSd2jRc/Z2y5UxBymvQ==",
-      "dependencies": [
-        "base-x@4.0.1"
-      ]
-    },
-    "bs58check@2.1.2": {
-      "integrity": "sha512-0TS1jicxdU09dwJMNZtVAfzPi6Q6QeN0pM1Fkzrjn+XYHvzMKPU3pHVpva+769iNVSfIYWf7LJ6WR+BuuMf8cA==",
-      "dependencies": [
-        "bs58@4.0.1",
-        "create-hash",
-        "safe-buffer@5.2.1"
-      ]
-    },
-    "bs58check@3.0.1": {
-      "integrity": "sha512-hjuuJvoWEybo7Hn/0xOrczQKKEKD63WguEjlhLExYs2wUBcebDC1jDNK17eEAD2lYfw82d5ASC1d7K3SWszjaQ==",
-      "dependencies": [
-        "@noble/hashes",
-        "bs58@5.0.0"
-      ]
     },
     "buffer@6.0.3": {
       "integrity": "sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==",
@@ -728,14 +672,6 @@
         "call-bind-apply-helpers",
         "es-errors",
         "gopd"
-      ]
-    },
-    "ecpair@2.1.0": {
-      "integrity": "sha512-cL/mh3MtJutFOvFc27GPZE2pWL3a3k4YvzUWEOvilnfZVlH3Jwgx/7d6tlD7/75tNk8TG2m+7Kgtz0SI1tWcqw==",
-      "dependencies": [
-        "randombytes",
-        "typeforce",
-        "wif"
       ]
     },
     "es-define-property@1.0.1": {
@@ -859,6 +795,13 @@
         "readable-stream@2.3.8",
         "safe-buffer@5.2.1",
         "to-buffer"
+      ]
+    },
+    "hash.js@1.1.7": {
+      "integrity": "sha512-taOaskGt4z4SOANNseOviYDvjEJinIkRgmp7LbKP2YTTmVxWBl87s/uzK9r+44BclBSp2X7K1hqeNfz9JbBeXA==",
+      "dependencies": [
+        "inherits",
+        "minimalistic-assert"
       ]
     },
     "hashlru@2.3.0": {
@@ -1001,6 +944,9 @@
         "dom-walk"
       ]
     },
+    "minimalistic-assert@1.0.1": {
+      "integrity": "sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A=="
+    },
     "multiformats@13.4.2": {
       "integrity": "sha512-eh6eHCrRi1+POZ3dA+Dq1C6jhP1GNtr9CRINMb67OKzqW9I5DUuZM/3jLPlzhgpGeiNUlEGEbkCYChXMCc/8DQ=="
     },
@@ -1063,12 +1009,6 @@
     "proxy-from-env@2.1.0": {
       "integrity": "sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA=="
     },
-    "randombytes@2.1.0": {
-      "integrity": "sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==",
-      "dependencies": [
-        "safe-buffer@5.2.1"
-      ]
-    },
     "readable-stream@1.1.14": {
       "integrity": "sha512-+MeVjFf4L44XUkhM1eYbD8fyEsxcV81pqMSR5gblfcLCHfZvbrqy4/qYHE+/R5HoBUT11WV5O08Cr1n3YXkWVQ==",
       "dependencies": [
@@ -1119,6 +1059,9 @@
         "es-errors",
         "is-regex"
       ]
+    },
+    "scalus@0.14.2": {
+      "integrity": "sha512-dobDMIUDUVhtxoX3ceGlaykKQGkph4HOE9hjkLsmwVgYf24fIik6YrZzVFrZSNCTvI2WN7hjEknehIrEJo1CMQ=="
     },
     "serialize-error@8.1.0": {
       "integrity": "sha512-3NnuWfM6vBYoy5gZFvHiYsVbafvI9vZv/+jlIigFn4oP4zjNPK3LhcY0xSCgeb1a5L8jO71Mit9LlNoi2UfDDQ==",
@@ -1192,24 +1135,12 @@
         "is-typed-array"
       ]
     },
-    "typeforce@1.18.0": {
-      "integrity": "sha512-7uc1O8h1M1g0rArakJdf0uLRSSgFcYexrVoKo+bzJd32gd4gDy2L/Z+8/FjPnU9ydY3pEnVPtr9FyscYY60K1g=="
-    },
     "uint8-varint@2.0.4": {
       "integrity": "sha512-FwpTa7ZGA/f/EssWAb5/YV6pHgVF1fViKdW8cWaEarjB8t7NyofSWBdOTyFPaGuUG4gx3v1O3PQ8etsiOs3lcw==",
       "dependencies": [
         "uint8arraylist",
         "uint8arrays"
       ]
-    },
-    "uint8array-tools@0.0.7": {
-      "integrity": "sha512-vrrNZJiusLWoFWBqz5Y5KMCgP9W9hnjZHzZiZRT8oNAkq3d5Z5Oe76jAvVVSRh4U8GGR90N2X1dWtrhvx6L8UQ=="
-    },
-    "uint8array-tools@0.0.8": {
-      "integrity": "sha512-xS6+s8e0Xbx++5/0L+yyexukU7pz//Yg6IHg3BKhXotg1JcYtgxVcUctQ0HxLByiJzpAkNFawz1Nz5Xadzo82g=="
-    },
-    "uint8array-tools@0.0.9": {
-      "integrity": "sha512-9vqDWmoSXOoi+K14zNaf6LBV51Q8MayF0/IiQs3GlygIKUYtog603e6virExkjjFosfJUBI4LhbQK1iq8IG11A=="
     },
     "uint8arraylist@2.4.9": {
       "integrity": "sha512-KxWjyEFzchzik3aoQlK66oaoxIReoMo5bQRm1fcjBUZvE8xv/tyR3CTKhjh6K/faV8VaF6hd5pjr45CzbwuwkA==",
@@ -1248,18 +1179,6 @@
         "which-typed-array"
       ]
     },
-    "varuint-bitcoin@1.1.2": {
-      "integrity": "sha512-4EVb+w4rx+YfVM32HQX42AbbT7/1f5zwAYhIujKXKk8NQK+JfRVl3pqT3hjNn/L+RstigmGGKVwHA/P0wgITZw==",
-      "dependencies": [
-        "safe-buffer@5.2.1"
-      ]
-    },
-    "varuint-bitcoin@2.0.0": {
-      "integrity": "sha512-6QZbU/rHO2ZQYpWFDALCDSRsXbAs1VOEmXAxtbtjLtKuMJ/FQ8YbhfxlaiKv5nklci0M6lZtlZyxo9Q+qNnyog==",
-      "dependencies": [
-        "uint8array-tools@0.0.8"
-      ]
-    },
     "web-encoding@1.1.5": {
       "integrity": "sha512-HYLeVCdJ0+lBYV2FvNZmv3HJ2Nt0QYXqZojk3d9FJOLkwnuhzM9tmamh8d7HPM8QqjKH8DeHkFTx+CFlWpZZDA==",
       "dependencies": [
@@ -1294,12 +1213,6 @@
         "has-tostringtag"
       ]
     },
-    "wif@2.0.6": {
-      "integrity": "sha512-HIanZn1zmduSF+BQhkE+YXIbEiH0xPr1012QbFEGB0xsKqJii0/SqJjyn8dFv6y36kOznMgMB+LGcbZTJ1xACQ==",
-      "dependencies": [
-        "bs58check@2.1.2"
-      ]
-    },
     "ws@7.5.10": {
       "integrity": "sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ=="
     }
@@ -1307,9 +1220,9 @@
   "workspace": {
     "dependencies": [
       "npm:@cardano-sdk/crypto@0.2.2",
-      "npm:@meshsdk/common@1.9.0-beta.95",
-      "npm:@meshsdk/core-csl@1.9.0-beta.95",
-      "npm:@meshsdk/core@1.9.0-beta.95"
+      "npm:@meshsdk/common@1.9.0-beta.100",
+      "npm:@meshsdk/core-csl@1.9.0-beta.100",
+      "npm:@meshsdk/core@1.9.0-beta.100"
     ]
   }
 }

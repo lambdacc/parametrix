@@ -12,15 +12,16 @@ import {
     scriptHash,
     serializeAddressObj, SLOT_CONFIG_NETWORK,
     serializePlutusScript,
-    stringToHex, unixTimeToEnclosingSlot,
+    stringToHex, unixTimeToEnclosingSlot,applyParamsToScript,
     UTxO
 } from "@meshsdk/core";
-import {applyParamsToScript, parseInlineDatum} from "@meshsdk/core-csl";
+import {parseInlineDatum} from "@meshsdk/core-csl";
 import {builtinByteString, hexToString} from "@meshsdk/common";
 
 import {assetClass} from "@meshsdk/common";
 import blueprint from "../aiken/parametrix/plutus.json" with {type: "json"};
 import {C3_CONFIG, getC3OracleData} from "./oracle/charli3Oracle.ts";
+import {getTxBuilder} from "./common.ts";
 
 
 // --------------------------------------------------
@@ -31,7 +32,7 @@ const NETWORK = 'preprod';
 const NETWORK_ID = 0;
 const MICRO_UNITS = 1000000
 const FEE_ADDRESS = "addr_test1qrxyezc0h7pzg3uv83v30ttmec4navpw8u5q5ft3w72ysvae7m8kn49reh566kzdzjtt0rwxfdj39gvm54z5z7tn4lrsqneynj"
-const COVERAGE = 100 * MICRO_UNITS;
+const COVERAGE = 100
 const PREMIUM_BPS = 500;
 
 function getScriptAddress(compiled: string): string {
@@ -65,11 +66,13 @@ function getValidator(name: string) {
     return v.compiledCode;
 }
 
+type Asset = {
+    policyId: string;
+    assetNameHex: string;
+    unit: string;
+};
 
-export const assetMap: Record<
-    string,
-    { policyId: string; assetNameHex: string; unit: string }
-> = {
+export const assetMap: Record<string, Asset> = {
     ADA: {
         policyId: "",
         assetNameHex: "",
@@ -90,11 +93,6 @@ export const assetMap: Record<
     },
 };
 
-
-// --------------------------------------------------
-// FIXED REGISTRY LOADER
-// --------------------------------------------------
-
 function buildPubKeyAddress(feeAddrBech32: string) {
     return pubKeyAddress(deserializeAddress(feeAddrBech32).pubKeyHash, deserializeAddress(feeAddrBech32).stakeCredentialHash);
 }
@@ -103,12 +101,7 @@ function buildMPubKeyAddress(bech32Address: string) {
     return mPubKeyAddress(deserializeAddress(bech32Address).pubKeyHash, deserializeAddress(bech32Address).stakeCredentialHash)
 }
 
-function loadScripts(
-    asset: { policyId: string; assetNameHex: string },
-    feeAddrBech32: string,
-    poolId: string
-) {
-    // ---------------- REGISTRY (mint policy) ----------------
+function loadScripts(asset: any, feeAddrBech32: string, poolId: string) {
     const registryCompiled = getValidator("registry.");
 
     const paymentAsset = assetClass(
@@ -164,31 +157,46 @@ function loadScripts(
 // --------------------------------------------------
 function buildPoolDatum(
     poolId: string,
-    asset: { policyId: string; assetNameHex: string },
+    asset: any,
     hedgerAddr: string,
     eventType: string,
-    feeAddr: string,
+    threshold: number,
+    coverage: number,
+    premiumBps: number,
+    feeAddr: string
 ) {
+    // --- Time configuration (hackathon presets) ---
+    const now = Date.now();
 
-    const eventThreshold = eventType === "RAINFALL_EXCEEDED" ? 100 : 999999;
+    const startTime = now;                          // pool opens immediately
+    const endTime = now + 24 * 60 * 60 * 1000;      // subscriptions close in 24h
+    const eventTime = endTime + 5 * 60 * 1000;      // oracle evaluation shortly after
+    const settlementTime = now;                     // simplified (for demo)
 
     return mConStr0([
-        poolId,                              // pool_id (ByteArray)
-        mAssetClass(asset.policyId, asset.assetNameHex), // payment_asset
-        buildMPubKeyAddress(hedgerAddr),           // hedger
+        poolId,                                       // unique pool identifier
 
-        eventType,                 // event_type
-        eventThreshold,                                 // event_threshold
-        COVERAGE,                  // coverage_target
-        500,                                 // premium_bps
+        mAssetClass(asset.policyId, asset.assetNameHex), // asset used (DJED)
 
-        Date.now(),                          // subscription_start
-        Date.now() + 60 * 60 * 24 * 1000,                 // subscription_end
-        Date.now() + 100,                // event_time -FOR TESTING
-        //Date.now() + 100,                // settlement_time - FOR TESTING
-        1776475090000,
-        buildMPubKeyAddress(feeAddr),              // fee_addr
-        500,                                 // fee__bps
+        buildMPubKeyAddress(hedgerAddr),              // hedger (protection buyer)
+
+        eventType,                                    // oracle event type (rainfall / flight)
+
+        threshold,                                    // value required to trigger payout
+
+        coverage,                                     // payout amount to hedger if event occurs
+
+        premiumBps,                                   // premium rate (in basis points)
+
+        startTime,                                    // subscription start
+        endTime,                                      // subscription end
+
+        eventTime,                                    // oracle check time
+        settlementTime,                               // settlement execution time
+
+        buildMPubKeyAddress(feeAddr),                 // protocol / fee address
+
+        premiumBps,                                   // ⚠️ duplicate field (confirm purpose: fee or reuse)
     ]);
 }
 
@@ -222,13 +230,13 @@ export async function createPool(
 
 
     const wallet = loadWallet(walletFile);
-    const changeAddress = await wallet.getChangeAddress();
-    const hedgerPkh = resolvePaymentKeyHash(changeAddress);
+    const walletAddress = await wallet.getChangeAddress();
+    const hedgerPkh = resolvePaymentKeyHash(walletAddress);
     const poolId = `${hedgerPkh.slice(0, 3)}-${Date.now()}`; //fine for demo
 
 
     const provider = new KoiosProvider(NETWORK);
-    const utxos = await provider.fetchAddressUTxOs(changeAddress);
+    const utxos = await provider.fetchAddressUTxOs(walletAddress);
     if (!utxos.length) throw new Error('No wallet UTxOs');
 
     console.dir(utxos, {depth: null});
@@ -238,28 +246,29 @@ export async function createPool(
     const {registry, pool} = loadScripts(asset, feeAddress, poolId);
     const collateral = (await wallet.getCollateral())[0];
 
+    const coverageAmount = COVERAGE * MICRO_UNITS; // human → onchain
+
     // ---------------- DATUM ----------------
     const datum = buildPoolDatum(
         poolId,
         asset,
-        changeAddress,
+        walletAddress,
         eventType,
-        feeAddress,
+        100,
+        coverageAmount,
+        PREMIUM_BPS,
+        feeAddress
     );
 
     // ---------------- PREMIUM ----------------
 
     const premium_micro_units =
-        (COVERAGE * PREMIUM_BPS) / 10_000;
+        (coverageAmount * PREMIUM_BPS) / 10_000;
 
     console.log("premium:", premium_micro_units)
 
     // ---------------- TX ----------------
-    const tx = new MeshTxBuilder({
-    fetcher: provider,
-    submitter: provider,
-    evaluator: provider
-  }).setNetwork(NETWORK);
+    const tx = getTxBuilder()
 
     await tx
         .mintPlutusScriptV3()
@@ -285,7 +294,7 @@ export async function createPool(
         ])
         .txOutInlineDatumValue(
             buildContributionDatum(
-                changeAddress,
+                walletAddress,
                 premium_micro_units,
                 "PREMIUM"
             ))
@@ -299,7 +308,7 @@ export async function createPool(
             collateral!.output.address
         )
 
-        .changeAddress(changeAddress)
+        .changeAddress(walletAddress)
         .selectUtxosFrom(utxos)
         .complete();
 
