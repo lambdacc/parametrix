@@ -295,21 +295,107 @@ export async function createPool(
     return {unsignedTx: tx.txHex, poolId: poolId};
 }
 
-// ================= SUBSCRIBE =================
 
-export async function subscribe(wallet: any, poolId: string, amount: number, paymentAssetCode: string, feeAddress: string = FEE_ADDRESS) {
+export interface PoolDatumObject {
+    pool_id: string;                 // hex (ByteArray)
+    payment_asset: any;              // AssetClass (keep raw or type if you have one)
+    hedger: string;                 // bech32
 
-    const subscriberAddr = await wallet.getChangeAddress();
+    event_type: string;             // decoded string
+    event_threshold: number;
+
+    coverage_target: number;
+    premium_bps: number;
+
+    subscription_start: number;
+    subscription_end: number;
+
+    event_time: number;
+    settlement_time: number;
+
+    fee_addr: string;               // bech32
+
+    fee_bps: number;
+}
+
+
+function parsePoolDatumFromUtxo(utxo: UTxO): PoolDatumObject {
+    const datum = deserializeDatum(utxo.output.plutusData!)
+
+    console.dir(datum, {depth: null});
+    return {
+        pool_id: datum.fields[0].bytes,
+        payment_asset: datum.fields[1],
+        hedger: serializeAddressObj(datum.fields[2]),
+
+        event_type: hexToString(datum.fields[3].bytes),
+        event_threshold: Number(datum.fields[4].int),
+
+        coverage_target: Number(datum.fields[5].int),
+        premium_bps: Number(datum.fields[6].int),
+
+        subscription_start: Number(datum.fields[7].int),
+        subscription_end: Number(datum.fields[8].int),
+
+        event_time: Number(datum.fields[9].int),
+        settlement_time: Number(datum.fields[10].int),
+
+        fee_addr: serializeAddressObj(datum.fields[11]),
+
+        fee_bps: Number(datum.fields[12].int),
+    };
+}
+
+export function calculatePoolValidityLimit(subscriptionEnd: number) {
+    const now = Date.now();
+
+    if (now > subscriptionEnd) {
+        throw new Error("Subscription ended");
+    }
+
+    const twelveHoursFromNow = now + 12 * 60 * 60 * 1000;
+    const endWithBuffer = subscriptionEnd + 2 * 60 * 60 * 1000;
+
+    const minTimestamp = Math.min(
+        twelveHoursFromNow,
+        endWithBuffer
+    );
+
+    return unixTimeToEnclosingSlot(
+        minTimestamp,
+        SLOT_CONFIG_NETWORK.preprod
+    );
+}
+
+export async function subscribe(
+    wallet: any, // ✅ changed
+    poolId: string,
+    amount: number,
+    paymentAssetCode: string,
+    feeAddress: string = FEE_ADDRESS
+) {
+    console.log("subscribe() inputs:", {
+        hasWallet: !!wallet,
+        walletKeys: wallet ? Object.keys(wallet) : null,
+        poolId,
+        amount,
+        paymentAssetCode,
+        feeAddress,
+    });
+    // const wallet = loadWallet(walletFile);
+    const { collateral, walletAddress: subscriberAddr } = await getWalletInfoForTx(wallet); // ✅ changed
     const subscriberPkh = resolvePaymentKeyHash(subscriberAddr);
 
-    const provider = new KoiosProvider(NETWORK);
-    const subscriberUtxos = await wallet.getUtxos();
+    const provider = blockchainProvider;
+    const subscriberUtxos = await provider.fetchAddressUTxOs(subscriberAddr);
+    if (!subscriberUtxos.length) throw new Error("No wallet UTxOs");
 
     const asset = assetMap[paymentAssetCode];
     if (!asset) throw new Error("Unsupported asset");
 
     const {registry, pool} = loadScripts(asset, feeAddress, poolId);
 
+    // ---------------- FIND REGISTRY REF INPUT ----------------
     const poolUtxo = await provider.fetchAddressUTxOs(pool.address);
 
     const nftUnit = registry.policyId + stringToHex(poolId);
@@ -320,71 +406,75 @@ export async function subscribe(wallet: any, poolId: string, amount: number, pay
 
     if (!refUtxo) throw new Error("Registry ref UTxO not found");
 
+    const poolDatum = parsePoolDatumFromUtxo(refUtxo);
+
+    console.log("Parsed Pool Datum:", poolDatum);
+
     const poolAddr = refUtxo.output.address;
 
+    // ---------------- CALCULATIONS ----------------
     const deposited = amount * MICRO_UNITS;
+    const subscribed_units = amount
 
-    const collateral = (await wallet.getCollateral())[0];
+    if (subscribed_units <= 0) {
+        throw new Error("Deposit too small for subscription unit");
+    }
+
+    const invalidHereafter = calculatePoolValidityLimit(
+        poolDatum.subscription_end
+    );
+
+    // ---------------- TX ----------------
+    // const collateral = (await wallet.getCollateral())[0];
 
     const tx = new MeshTxBuilder({
-        fetcher: wallet,
-        submitter: wallet,
-        evaluator: wallet
+        fetcher: provider,
+        submitter: provider,
+        evaluator: provider
     }).setNetwork(NETWORK);
 
     await tx
         .mintPlutusScriptV3()
-        .mint(amount.toString(), pool.policyId, stringToHex("sPMX"))
+        .mint(
+            subscribed_units.toString(),
+            pool.policyId,
+            stringToHex("sPMX")
+        )
         .mintingScript(pool.script)
         .mintRedeemerValue(mConStr0([]))
 
-        .txOut(poolAddr, [{ unit: asset.unit, quantity: deposited.toString() }])
-        .txOutInlineDatumValue(buildContributionDatum(subscriberAddr, deposited, "SUBSCRIPTION"))
+        .txOut(poolAddr, [
+            {
+                unit: asset.unit,
+                quantity: deposited.toString(),
+            },
+        ])
+        .txOutInlineDatumValue(
+            buildContributionDatum(
+                subscriberAddr,
+                deposited,
+                "SUBSCRIPTION"
+            )
+        )
+        .invalidHereafter(invalidHereafter)
+        .readOnlyTxInReference(
+            refUtxo.input.txHash,
+            refUtxo.input.outputIndex
+        )
 
         .requiredSignerHash(subscriberPkh)
 
-        .txInCollateral(collateral.input.txHash, collateral.input.outputIndex, collateral.output.amount, collateral.output.address)
+        .txInCollateral(
+            collateral!.input.txHash,
+            collateral!.input.outputIndex,
+            collateral!.output.amount,
+            collateral!.output.address
+        )
 
         .changeAddress(subscriberAddr)
         .selectUtxosFrom(subscriberUtxos)
         .complete();
 
-    return tx.txHex;
-}
 
-// ================= SETTLE =================
-
-export async function settle(wallet: any, poolId: string, paymentAssetCode: string, feeAddress: string = FEE_ADDRESS) {
-
-    const addr = await wallet.getChangeAddress();
-    const pkh = resolvePaymentKeyHash(addr);
-
-    const provider = new KoiosProvider(NETWORK);
-    const utxos = await wallet.getUtxos();
-
-    const asset = assetMap[paymentAssetCode];
-    if (!asset) throw new Error("Unsupported asset");
-
-    const {pool, registry} = loadScripts(asset, feeAddress,poolId);
-
-    const poolUtxos = await provider.fetchAddressUTxOs(pool.address);
-
-    if (!poolUtxos.length) throw new Error("No pool UTxOs");
-
-    const collateral = (await wallet.getCollateral())[0];
-
-    const tx = new MeshTxBuilder({
-        fetcher: wallet,
-        submitter: wallet,
-        evaluator: wallet
-    }).setNetwork(NETWORK);
-
-    await tx
-        .requiredSignerHash(pkh)
-        .txInCollateral(collateral.input.txHash, collateral.input.outputIndex, collateral.output.amount, collateral.output.address)
-        .changeAddress(addr)
-        .selectUtxosFrom(utxos)
-        .complete();
-
-    return tx.txHex;
+    return { unsignedTx: tx.txHex }; // ✅ changed
 }

@@ -64,7 +64,7 @@ export default function Hero() {
 
                         {/* TAGLINE */}
                         <div className="mt-8 text-sm text-gray-500 italic">
-                            Trustless, oracle-driven insurance-like markets — powered by data.
+                            Trustless, oracle-driven insurance-like markets — powered by Charli3.
                         </div>
 
                     </div>
