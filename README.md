@@ -353,6 +353,16 @@ Risk event occurred: true
 ## A tagline
 **Hedge real-world uncertainty, on-chain.**
 
+## Dependencies / Frameworks Used
+
+- Aiken (smart contract development)
+- MeshJS (transaction building and off-chain integration)
+- Charli3 ODV Pull Oracle Client
+- FastAPI (oracle updater backend)
+- Next.js (frontend)
+- Deno (CLI execution)
+- Blockfrost/Kois (API access)
+
 ## Future Scope
 
 * **Contract Hardening**
