@@ -1,4 +1,4 @@
-import {blockchainProvider, blockfrost_api_key} from "@/src/common";
+import {blockfrost_api_key} from "@/src/common";
 import {c3FetchExample} from "@/src/c3/charli3Oracle";
 
 
@@ -6,7 +6,7 @@ import {c3FetchExample} from "@/src/c3/charli3Oracle";
     try {
         console.log("init test")
         console.log("blockfrost_api_key: ",blockfrost_api_key);
-        await c3FetchExample(blockchainProvider);
+        await c3FetchExample();
     } catch (err) {
         console.error(err);
     }

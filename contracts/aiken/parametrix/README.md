@@ -1,65 +1,106 @@
-# parametrix
+# Parametrix — Aiken Module
 
-Write validators in the `validators` folder, and supporting functions in the `lib` folder using `.ak` as a file extension.
+Parametrix is an on-chain implementation of **oracle-driven parametric risk pools** on Cardano.
 
-```aiken
-validator my_first_validator {
-  spend(_datum: Option<Data>, _redeemer: Data, _output_reference: Data, _context: Data) {
-    True
-  }
-}
+It models real-world risk hedging using oracle price feeds as a proxy for external signals such as:
+
+* rainfall
+* temperature
+* flight delays
+* other measurable events
+
+---
+
+## Core Idea
+
+* **Hedger** prepays premium
+* **Subscribers** provide coverage liquidity
+* **Oracle** determines event outcome
+* **Contract settles deterministically on-chain**
+
+---
+
+## Pool Model (`PoolDatum`)
+
+* `payment_asset` — settlement asset
+* `coverage_target` — total coverage
+* `premium_bps` — premium rate
+* `event_type` — semantic trigger type
+* `event_threshold` — trigger condition
+* time bounds — subscription + settlement
+
+---
+
+## Flow
+
+### 1. Pool Creation
+
+* Hedger initializes pool
+* Premium deposited upfront
+* Pool NFT minted (registry)
+
+### 2. Subscription
+
+* Users deposit liquidity
+* Receive proportional units
+* Enforced time window
+
+### 3. Settlement (Oracle-driven)
+
+```
+event_occured = price > event_threshold
 ```
 
-## Building
+* **Event occurs** → Hedger gets coverage, subscribers get premium
+* **No event** → Subscribers get principal + premium
+
+---
+
+## Oracle Integration
+
+* Oracle datum consumed via **reference input**
+* Policy ID fixed (trusted source)
+* Validity enforced (timestamp + expiry)
+* Integer-based evaluation (no floats)
+
+---
+
+## Project Structure
+
+```
+validators/
+  registry.ak
+  parametrix.ak
+
+lib/
+  oracle_datum.ak
+  utils.ak
+  types.ak
+```
+
+---
+
+## Build & Test
 
 ```sh
 aiken build
 ```
 
-## Configuring
-
-**aiken.toml**
-```toml
-[config.default]
-network_id = 41
-```
-
-Or, alternatively, write conditional environment modules under `env`.
-
-## Testing
-
-You can write tests in any module using the `test` keyword. For example:
-
-```aiken
-use config
-
-test foo() {
-  config.network_id + 1 == 42
-}
-```
-
-To run all tests, simply do:
-
 ```sh
 aiken check
 ```
 
-To run only tests matching the string `foo`, do:
+---
 
-```sh
-aiken check -m foo
-```
+## Design Highlights
 
-## Documentation
+* Oracle-driven, real-world aligned logic
+* Deterministic settlement (no ambiguity)
+* Per-subscriber payout correctness
+* Minimal state, composable design
 
-If you're writing a library, you might want to generate an HTML documentation for it.
+---
 
-Use:
+## Summary
 
-```sh
-aiken docs
-```
-
-## Resources
-
-Find more on the [Aiken's user manual](https://aiken-lang.org).
+Parametrix is a reusable primitive for **parametric insurance and risk hedging**, demonstrating how real-world signals can be bridged into Cardano smart contracts via oracle feeds.

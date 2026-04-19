@@ -13,7 +13,7 @@ import {
     ResponsiveContainer,
 } from "recharts";
 
-function PoolStats({ state, coverage }: any) {
+function PoolStats({ pool, state, coverage }: any) {
     const toHuman = (x: number) => Math.floor(x / 1_000_000);
 
     if (!state) return null;
@@ -47,7 +47,7 @@ function PoolStats({ state, coverage }: any) {
                     <div>
                         <div className="text-sm text-gray-500">Premium</div>
                         <div className="text-xl font-semibold">
-                            {(state.premium / 100)}%
+                            {(pool.config.premium / 100)}%
                         </div>
                     </div>
 
@@ -218,21 +218,27 @@ export default function PoolDetailsModal({
                             Loading funding stats...
                         </div>
                     ) : (
-                        <PoolStats state={state} coverage={coverage} />
+                        <PoolStats pool={pool} state={state} coverage={coverage} />
                     )}
 
                     {/* RAW DATA */}
                     <div className="mt-5">
                         <div className="text-xs text-gray-500 mb-2">Raw Pool Data</div>
-                        <pre className="text-xs bg-white border border-gray-200 p-3 rounded max-h-[200px] overflow-auto">
+                        <pre className="text-xs bg-white border border-gray-200 p-3 rounded max-h-[240px] overflow-auto">
               {JSON.stringify(pool, null, 2)}
             </pre>
                     </div>
 
                     {/* SUBSCRIBE */}
                     <div className="mt-5">
-                        <label className="text-sm text-gray-600">
+                        <label className="text-sm text-gray-600 flex items-center gap-2">
                             Enter subscription amount
+
+                            {!connected && (
+                                <span className="text-normal text-amber-600 font-medium">
+                              (connect wallet to proceed)
+                            </span>
+                            )}
                         </label>
 
                         <div className="mt-2 flex gap-3">
@@ -259,7 +265,8 @@ export default function PoolDetailsModal({
 
                         <button
                             onClick={handleSettle}
-                            className="flex-1 py-3 bg-green-600 text-white rounded-lg"
+                            disabled={loading || !connected}
+                            className="flex-1 py-3 bg-green-600 text-white rounded-lg disabled:opacity-50"
                         >
                             Settle
                         </button>
