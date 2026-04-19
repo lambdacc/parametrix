@@ -356,6 +356,7 @@ Risk event occurred: true
 ## Dependencies / Frameworks Used
 
 - Aiken (smart contract development)
+- Vodka (aiken helper lib)
 - MeshJS (transaction building and off-chain integration)
 - Charli3 ODV Pull Oracle Client
 - FastAPI (oracle updater backend)
