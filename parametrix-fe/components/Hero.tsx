@@ -83,44 +83,50 @@ export default function Hero() {
                     </div>
 
                     {/* RIGHT: ACTION PANEL (1/3) */}
-                    <div className="bg-white rounded-2xl p-8 flex flex-col justify-center items-center gap-6
-                border border-gray-200 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+                    <div className="
+  relative rounded-2xl p-8 flex flex-col justify-center items-center gap-6
+  border border-gray-200 shadow-[0_20px_60px_rgba(0,0,0,0.08)]
+  bg-gradient-to-br from-white via-[#f8fafc] to-[#eef2ff]
+">
+
+                        {/* soft glow accent */}
+                        <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_60%)] pointer-events-none" />
 
                         {/* HEADER */}
-                        <div className="text-center">
-                            <p className="text-sm text-gray-500 mb-1">Get Started</p>
+                        <div className="text-center relative z-10">
+                            <p className="text-normal text-gray-800 mb-1">Get Started</p>
                             <p className="text-lg font-semibold text-gray-900">
                                 Connect your wallet
                             </p>
                         </div>
 
                         {/* WALLET */}
-                        <div className="scale-150 origin-center">
+                        <div className="scale-150 origin-center relative z-10">
                             <CardanoWallet isDark={false} />
                         </div>
 
                         {/* DIVIDER */}
-                        <div className="w-full h-px bg-gray-200" />
+                        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent relative z-10" />
 
                         {/* CTA */}
                         <button
                             onClick={() => setOpen(true)}
                             disabled={!connected}
                             className="w-full py-4 text-lg font-semibold rounded-xl
-               bg-gradient-to-r from-blue-600 to-blue-500 text-white
-               shadow-[0_8px_25px_rgba(59,130,246,0.35)]
-               hover:from-blue-500 hover:to-blue-400
-               hover:scale-[1.02]
-               hover:shadow-[0_12px_35px_rgba(59,130,246,0.5)]
-               transition-all duration-200
-               disabled:opacity-40 disabled:cursor-not-allowed"
+      bg-gradient-to-r from-blue-600 to-indigo-600 text-white
+      shadow-[0_10px_30px_rgba(79,70,229,0.35)]
+      hover:from-blue-500 hover:to-indigo-500
+      hover:scale-[1.02]
+      hover:shadow-[0_15px_40px_rgba(79,70,229,0.5)]
+      transition-all duration-200
+      disabled:opacity-40 disabled:cursor-not-allowed relative z-10"
                         >
                             Create Hedge Pool
                         </button>
 
                         {/* HELP TEXT */}
                         {!connected && (
-                            <p className="text-xs text-gray-500 text-center max-w-[220px]">
+                            <p className="text-xs text-gray-500 text-center max-w-[220px] relative z-10">
                                 Connect wallet to create and interact with pools
                             </p>
                         )}

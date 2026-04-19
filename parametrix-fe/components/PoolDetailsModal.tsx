@@ -4,35 +4,110 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@meshsdk/react";
 import { settleContract, subscribeContract } from "@/lib/client/parametrix-actions";
 import { queryPoolState } from "@/lib/meshjs/queryPoolState";
+import { Percent, Users } from "lucide-react";
 
-/* ---------- NEW: stats component ---------- */
-function PoolStats({ state }: any) {
+import {
+    PieChart,
+    Pie,
+    Cell,
+    ResponsiveContainer,
+} from "recharts";
+
+function PoolStats({ state, coverage }: any) {
     const toHuman = (x: number) => Math.floor(x / 1_000_000);
 
     if (!state) return null;
 
+    const total = state.totalContributions;
+    const remaining = Math.max(coverage - total, 0);
+
+    const data = [
+        { name: "Funded", value: total },
+        { name: "Remaining", value: remaining },
+    ];
+
+    const fundingPct = Math.min((total / coverage) * 100, 100);
+
+    const COLORS = ["#22c55e", "#e5e7eb"]; // green + gray
+
     return (
-        <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-3">
-                <div className="text-xs text-gray-500">Funding</div>
-                <div className="text-lg font-semibold">
-                    {toHuman(state.totalContributions)}
+        <div className="mt-5 grid grid-cols-2 gap-5 items-center">
+
+            {/* LEFT */}
+
+            <div className="grid gap-4">
+
+                {/* PREMIUM */}
+                <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <Percent className="w-5 h-5 text-blue-600" />
+                    </div>
+
+                    <div>
+                        <div className="text-sm text-gray-500">Premium</div>
+                        <div className="text-xl font-semibold">
+                            {(state.premium / 100)}%
+                        </div>
+                    </div>
+
                 </div>
+
+                {/* CONTRIBUTORS */}
+                <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-emerald-600" />
+                    </div>
+
+                    <div>
+                        <div className="text-sm text-gray-500">Contributors</div>
+                        <div className="text-xl font-semibold">
+                            {state.contributorCount}
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-3">
-                <div className="text-xs text-gray-500">Premium</div>
-                <div className="text-lg font-semibold">
-                    {toHuman(state.premium)}
+            {/* RIGHT: REAL DONUT */}
+            <div className="flex items-center justify-center h-[200px]">
+
+                <div className="relative w-full h-full max-w-[200px]">
+
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={2}
+                                dataKey="value"
+                                stroke="none"
+                            >
+                                {data.map((_, index) => (
+                                    <Cell key={index} fill={COLORS[index]} />
+                                ))}
+                            </Pie>
+                        </PieChart>
+                    </ResponsiveContainer>
+
+                    {/* CENTER TEXT */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <div className="text-xs text-gray-500">Coverage</div>
+                        <div className="text-base font-semibold">
+                            {toHuman(coverage)}
+                        </div>
+                        <div className="text-sm font-medium text-gray-700 mt-1">
+                            {Math.round(fundingPct)}%
+                        </div>
+                    </div>
+
                 </div>
+
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-3">
-                <div className="text-xs text-gray-500">Contributors</div>
-                <div className="text-lg font-semibold">
-                    {state.contributorCount}
-                </div>
-            </div>
         </div>
     );
 }
@@ -75,6 +150,8 @@ export default function PoolDetailsModal({
     }, [open, pool.poolId]);
 
     if (!open) return null;
+
+    const coverage = (pool.coverage || 100) * 1_000_000;
 
     const handleSubscribe = async () => {
         if (!connected || !wallet) return;
@@ -135,16 +212,16 @@ export default function PoolDetailsModal({
                         Interact with the pool and monitor funding status.
                     </p>
 
-                    {/* NEW: STATS */}
+                    {/* STATS */}
                     {stateLoading ? (
                         <div className="text-sm text-gray-500 mb-4">
                             Loading funding stats...
                         </div>
                     ) : (
-                        <PoolStats state={state} />
+                        <PoolStats state={state} coverage={coverage} />
                     )}
 
-                    {/* RAW DATA (kept, but styled better) */}
+                    {/* RAW DATA */}
                     <div className="mt-5">
                         <div className="text-xs text-gray-500 mb-2">Raw Pool Data</div>
                         <pre className="text-xs bg-white border border-gray-200 p-3 rounded max-h-[200px] overflow-auto">
