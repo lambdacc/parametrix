@@ -1,4 +1,5 @@
 import type {UTxO} from "@meshsdk/core";
+import {getWalletDappAddress} from "@/lib/meshjs/wallet-address-util";
 
 export async function getWalletInfoForTx(txWallet: any, ) {
     // Attempt to call init() only if the method exists
@@ -12,7 +13,7 @@ export async function getWalletInfoForTx(txWallet: any, ) {
 
     const utxos:UTxO[] = await txWallet?.getUtxos();
     const collateral = await getWalletCollateral(txWallet);
-    const walletAddress =  await txWallet.getChangeAddress();
+    const walletAddress =  await getWalletDappAddress(txWallet)
     const changeAddress: string = await txWallet.getChangeAddress();
 
     if (!utxos || utxos.length === 0) {

@@ -58,7 +58,7 @@ curl -X POST http://localhost:8000/oracle/feeds
 
 ### 2. `/oracle/aggregate`
 
-Build oracle update transaction.
+Build oracle update transaction and submits it to the service automatically.
 
 ```bash
 curl -X POST http://localhost:8000/oracle/aggregate
@@ -89,8 +89,8 @@ curl -X POST http://localhost:8000/oracle/aggregate
 ---
 
 ## Notes
-
-* `/oracle/aggregate` does **not** submit the transaction
+Tha API endpoints:
+* `/oracle/aggregate` does submit the transaction
 * Always fetches fresh feeds
 * `/oracle/feeds` is mainly for debugging and inspection
 * `feeds.json` (if enabled) is optional
@@ -115,5 +115,4 @@ config/config.yaml
 ## Summary
 
 * `/feeds` → raw signed oracle data
-* `/aggregate` → build transaction (CBOR)
-* submission handled separately
+* `/aggregate` → build transaction and submits it to the blockchain

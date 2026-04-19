@@ -1,48 +1,119 @@
 "use client";
 
-import { useState } from "react";
-import { useWallet } from "@meshsdk/react";
-import { createPoolContract } from "@/lib/client/parametrix-actions";
+import {useState} from "react";
+import {useWallet} from "@meshsdk/react";
+import {createPoolContract} from "@/lib/client/parametrix-actions";
+
+/* ---------- TYPES ---------- */
+type RiskType = "RAINFALL_EXCEEDED" | "FLIGHT_DELAY";
 
 /* ---------- CONFIG ---------- */
-const CONFIG = {
+const CONFIG: {
+    riskEvents: { label: string; value: RiskType }[];
+    coverage: number[];
+    premiumBps: { label: string; value: number }[];
+    locations: Record<RiskType, { label: string; value: string }[]>;
+} = {
     riskEvents: [
-        { label: "Rainfall Exceeds Threshold", value: "RAINFALL_EXCEEDED" },
-        { label: "Flight Delay", value: "FLIGHT_DELAY" },
+        {label: "Rainfall Exceeds Threshold", value: "RAINFALL_EXCEEDED"},
+        {label: "Flight Delay", value: "FLIGHT_DELAY"},
     ],
     coverage: [250, 500, 1000],
     premiumBps: [
-        { label: "5%", value: 500 },
-        { label: "10%", value: 1000 },
+        {label: "5%", value: 500},
+        {label: "10%", value: 1000},
     ],
-    assets: [
-        { label: "DJED", value: "DJED", enabled: true },
-        { label: "USDM", value: "USDM", enabled: false },
-        { label: "ADA", value: "ADA", enabled: false },
-        { label: "USDC", value: "USDC", enabled: false },
-    ],
+    locations: {
+        RAINFALL_EXCEEDED: [
+            {label: "Mumbai, India", value: "MUMBAI_IN"},
+            {label: "Chennai, India", value: "CHENNAI_IN"},
+            {label: "Jakarta, Indonesia", value: "JAKARTA_ID"},
+        ],
+        FLIGHT_DELAY: [
+            {label: "London, UK (Heathrow)", value: "LONDON_UK"},
+            {label: "New York, USA (JFK)", value: "NYC_US"},
+            {label: "Dubai, UAE", value: "DUBAI_UAE"},
+        ],
+    },
 };
 
-export default function CreatePoolModal({ open, onClose }: any) {
-    const { wallet, connected } = useWallet();
+/* ---------- STORIES ---------- */
+const STORIES: Record<RiskType, string> = {
+    RAINFALL_EXCEEDED:
+        "I am a crop farmer and my harvest season is approaching. Excess rainfall can damage yield and impact income. I am seeking protection against heavy rainfall during this period.",
+    FLIGHT_DELAY:
+        "I frequently travel for work and delays can disrupt schedules and cause financial loss. I want protection in case my flight is delayed beyond a certain threshold.",
+};
+type Props = {
+    open: boolean;
+    onClose: () => void;
+};
+
+export default function CreatePoolModal({open, onClose}: Props) {
+    const {wallet, connected} = useWallet();
+
+    /* ---------- STATE (INSIDE COMPONENT) ---------- */
     const [loading, setLoading] = useState(false);
 
-    const [risk, setRisk] = useState(CONFIG.riskEvents[0].value);
+    const [risk, setRisk] = useState<RiskType>("RAINFALL_EXCEEDED");
+
     const [coverage, setCoverage] = useState(250);
     const [premium, setPremium] = useState(500);
-    const [asset, setAsset] = useState("DJED");
+    const [asset] = useState("DJED");
+
+    const [location, setLocation] = useState(
+        CONFIG.locations["RAINFALL_EXCEEDED"][0].value
+    );
 
     if (!open) return null;
 
     const threshold = risk === "RAINFALL_EXCEEDED" ? 100 : 6000000;
+    const story = STORIES[risk];
 
+    const locationLabel =
+        CONFIG.locations[risk].find((l) => l.value === location)?.label;
+
+    /* ---------- TIME ---------- */
+    const now = new Date();
+
+    let subscriptionEnd: Date;
+    let eventTime: Date;
+    let settlementTime: Date;
+
+    if (risk === "RAINFALL_EXCEEDED") {
+        subscriptionEnd = new Date(now);
+        subscriptionEnd.setMonth(subscriptionEnd.getMonth() + 1);
+
+        eventTime = new Date(now);
+        eventTime.setMonth(eventTime.getMonth() + 3);
+
+        settlementTime = new Date(eventTime.getTime() + 6 * 60 * 60 * 1000);
+    } else {
+        subscriptionEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+        eventTime = new Date(now);
+        eventTime.setDate(eventTime.getDate() + 7);
+
+        settlementTime = new Date(eventTime.getTime() + 15 * 60 * 1000);
+    }
+
+    const fmt = (d: Date) =>
+        d.toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+
+    /* ---------- CREATE ---------- */
     async function handleCreate() {
         if (!connected || !wallet) return;
 
         try {
             setLoading(true);
 
-            const { txHash, poolId } = await createPoolContract(wallet, {
+            const res = await createPoolContract(wallet, {
                 eventType: risk,
                 paymentAssetCode: asset,
                 coverage,
@@ -52,12 +123,22 @@ export default function CreatePoolModal({ open, onClose }: any) {
 
             await fetch("/api/pools", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
-                    poolId,
-                    txHash,
+                    ...res,
                     createdAt: Date.now(),
-                    config: { risk, coverage, premium, asset, threshold },
+                    config: {
+                        risk,
+                        coverage,
+                        premium,
+                        threshold,
+                        location,
+                        story,
+                        startTime: now.getTime(),
+                        subscriptionEnd: subscriptionEnd.getTime(),
+                        eventTime: eventTime.getTime(),
+                        settlementTime: settlementTime.getTime(),
+                    },
                 }),
             });
 
@@ -68,179 +149,187 @@ export default function CreatePoolModal({ open, onClose }: any) {
         }
     }
 
-    const preview = `${risk.replace("_", " ")} > ${threshold}, ${coverage} ${asset}, Premium ${premium / 100}%`;
+    const preview = `${risk.replace("_", " ")} @ ${locationLabel}, ${coverage} ${asset}, Premium ${
+        premium / 100
+    }%`;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* overlay */}
-            <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                onClick={onClose}
-            />
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="min-h-full flex items-start justify-center p-4">
 
-            {/* modal */}
-            <div className="relative w-[92%] max-w-4xl min-h-[85vh]
-                      bg-gradient-to-b from-[#f9fafb] via-[#eef2f7] to-[#e5e7eb]
-                      text-gray-900 rounded-2xl p-10
-                      border border-gray-300 shadow-2xl overflow-y-auto">
+                {/* overlay */}
+                <div
+                    className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                    onClick={onClose}
+                />
 
-                {/* HEADER */}
-                <div className="mb-8">
-                    <h2 className="text-3xl font-semibold">Create Risk Pool</h2>
-                    <p className="text-gray-600 mt-2 max-w-2xl">
-                        Hedger defines protection terms and pays premium.
-                        Subscribers provide liquidity and earn yield unless the event triggers a payout.
-                    </p>
-                </div>
+                {/* modal */}
+                <div className="relative w-[92%] max-w-4xl
+          bg-gradient-to-b from-[#f9fafb] via-[#eef2f7] to-[#e5e7eb]
+          text-gray-900 rounded-2xl p-6
+          border border-gray-300 shadow-2xl">
 
-                {/* FLOW EXPLAINER */}
-                <div className="mb-10 p-4 rounded-lg border border-gray-300 bg-white text-sm">
-                    <span className="font-medium">Flow:</span>{" "}
-                    Hedger pays premium → Subscribers provide capital →
-                    If event occurs, Subscribers pay Hedger
-                </div>
-
-                {/* GRID */}
-                <div className="grid md:grid-cols-2 gap-10">
-
-                    {/* LEFT COLUMN */}
-                    <div className="space-y-8">
-
-                        {/* Risk */}
-                        <div>
-                            <label className="font-medium">Risk Event</label>
-                            <p className="text-sm text-gray-500 mb-2">
-                                Condition monitored by oracle.
-                            </p>
-                            <select
-                                value={risk}
-                                onChange={(e) => setRisk(e.target.value)}
-                                className="w-full p-4 rounded-lg bg-white border border-gray-300"
-                            >
-                                {CONFIG.riskEvents.map((r) => (
-                                    <option key={r.value} value={r.value}>{r.label}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Threshold */}
-                        <div>
-                            <label className="font-medium">Threshold</label>
-                            <p className="text-sm text-gray-500 mb-2">
-                                Trigger value for payout.
-                            </p>
-                            <div className="p-4 bg-white border border-gray-300 rounded-lg">
-                                {threshold}
-                            </div>
-                        </div>
-
-                        {/* Timing */}
-                        <div>
-                            <label className="font-medium">Timing</label>
-                            <p className="text-sm text-gray-500 mb-2">
-                                Preset for demo.
-                            </p>
-                            <div className="p-4 bg-white border border-gray-300 rounded-lg text-sm">
-                                Start: Now <br />
-                                End: +24h <br />
-                                Event: +5 min <br />
-                                Settlement: Set to 'Now' for demo
-                            </div>
-                        </div>
-
+                    {/* HEADER */}
+                    <div className="mb-6">
+                        <h2 className="text-2xl font-semibold">Create Risk Pool</h2>
+                        <p className="text-gray-600 text-sm mt-1">
+                            Hedger defines protection terms. Subscribers provide liquidity and earn yield.
+                        </p>
                     </div>
 
-                    {/* RIGHT COLUMN */}
-                    <div className="space-y-8">
+                    {/* TOP */}
+                    <div className="mb-6 grid md:grid-cols-2 gap-5">
 
-                        {/* Coverage */}
                         <div>
-                            <label className="font-medium">Coverage (Payout)</label>
-                            <p className="text-sm text-gray-500 mb-2">
-                                Amount Hedger receives if event occurs.
-                            </p>
+                            <label className="font-medium mb-1 block">Risk Event</label>
                             <select
-                                value={coverage}
-                                onChange={(e) => setCoverage(Number(e.target.value))}
-                                className="w-full p-4 rounded-lg bg-white border border-gray-300"
+                                value={risk}
+                                onChange={(e) => {
+                                    const newRisk = e.target.value as RiskType;
+                                    setRisk(newRisk);
+                                    setLocation(CONFIG.locations[newRisk][0].value);
+                                }}
+                                className="w-full p-3 rounded-md bg-white border border-gray-300"
                             >
-                                {CONFIG.coverage.map((c) => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Premium */}
-                        <div>
-                            <label className="font-medium">Premium (%)</label>
-                            <p className="text-sm text-gray-500 mb-2">
-                                Paid by Hedger → earned by Subscribers.
-                            </p>
-                            <select
-                                value={premium}
-                                onChange={(e) => setPremium(Number(e.target.value))}
-                                className="w-full p-4 rounded-lg bg-white border border-gray-300"
-                            >
-                                {CONFIG.premiumBps.map((p) => (
-                                    <option key={p.value} value={p.value}>{p.label}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Asset */}
-                        <div>
-                            <label className="font-medium">Asset</label>
-                            <p className="text-sm text-gray-500 mb-2">
-                                Settlement currency (demo restricted).
-                            </p>
-                            <select
-                                value={asset}
-                                className="w-full p-4 rounded-lg bg-white border border-gray-300"
-                            >
-                                {CONFIG.assets.map((a) => (
-                                    <option key={a.value} value={a.value} disabled={!a.enabled}>
-                                        {a.label} {!a.enabled ? "(disabled)" : ""}
+                                {CONFIG.riskEvents.map((r) => (
+                                    <option key={r.value} value={r.value}>
+                                        {r.label}
                                     </option>
                                 ))}
                             </select>
                         </div>
 
+                        <div className="p-3 rounded-md border border-gray-300 bg-white">
+                            <div className="text-xs text-gray-500 mb-1">Hedger Intent</div>
+                            <div className="text-sm text-gray-800">{story}</div>
+                        </div>
+
                     </div>
-                </div>
 
-                {/* PREVIEW */}
-                <div className="mt-10 p-5 rounded-lg border border-blue-200 bg-blue-50">
-                    <div className="text-sm text-gray-700 mb-1">Pool Summary</div>
-                    <div className="font-medium">{preview}</div>
-                </div>
+                    {/* GRID */}
+                    <div className="grid md:grid-cols-2 gap-6">
 
-                {/* CTA */}
-                <div className="mt-10 flex gap-4">
+                        {/* LEFT */}
+                        <div className="space-y-5">
 
-                    {/* Cancel — secondary / low emphasis */}
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-4 text-base font-medium rounded-xl
-               border border-gray-300
-               bg-white text-gray-600
-               hover:bg-gray-100 transition"
-                    >
-                        Cancel
-                    </button>
+                            <div>
+                                <label className="font-medium mb-1 block">Location</label>
+                                <select
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                    className="w-full p-3 rounded-md bg-white border border-gray-300"
+                                >
+                                    {CONFIG.locations[risk].map((l) => (
+                                        <option key={l.value} value={l.value}>
+                                            {l.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                    {/* Create — primary / dominant */}
-                    <button
-                        onClick={handleCreate}
-                        disabled={!connected || loading}
-                        className="flex-[2] py-5 text-lg font-semibold rounded-xl
-               bg-gradient-to-r from-blue-600 to-indigo-600 text-white
-               shadow-[0_10px_30px_rgba(59,130,246,0.4)]
-               hover:scale-[1.02] hover:shadow-[0_15px_40px_rgba(99,102,241,0.6)]
-               transition-all
-               disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        {loading ? "Creating..." : "Create Pool"}
-                    </button>
+                            <div>
+                                <label className="font-medium mb-1 block">Threshold</label>
+                                <div className="p-3 bg-white border border-gray-300 rounded-md">
+                                    {threshold}
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {/* RIGHT */}
+                        <div className="space-y-5">
+
+                            <div>
+                                <label className="font-medium mb-1 block">Coverage</label>
+                                <select
+                                    value={coverage}
+                                    onChange={(e) => setCoverage(Number(e.target.value))}
+                                    className="w-full p-3 rounded-md bg-white border"
+                                >
+                                    {CONFIG.coverage.map((c) => (
+                                        <option key={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="font-medium mb-1 block">Premium (%)</label>
+                                <select
+                                    value={premium}
+                                    onChange={(e) => setPremium(Number(e.target.value))}
+                                    className="w-full p-3 rounded-md bg-white border"
+                                >
+                                    {CONFIG.premiumBps.map((p) => (
+                                        <option key={p.value} value={p.value}>
+                                            {p.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* TIMING */}
+                    <div className="mt-6">
+                        <label className="font-medium mb-1 block">Pool Lifecycle</label>
+
+                        <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+
+                            <div className="p-3 bg-white border border-gray-300 rounded-md">
+                                <div className="text-gray-500 text-xs">Start</div>
+                                <div className="font-medium">{fmt(now)}</div>
+                            </div>
+
+                            <div className="p-3 bg-white border border-gray-300 rounded-md">
+                                <div className="text-gray-500 text-xs">Subscription Ends</div>
+                                <div className="font-medium">{fmt(subscriptionEnd)}</div>
+                            </div>
+
+                            <div className="p-3 bg-white border border-gray-300 rounded-md">
+                                <div className="text-gray-500 text-xs">Event Time</div>
+                                <div className="font-medium">{fmt(eventTime)}</div>
+                            </div>
+
+                            <div className="p-3 bg-white border border-gray-300 rounded-md">
+                                <div className="text-gray-500 text-xs">Settlement</div>
+                                <div className="font-medium">{fmt(settlementTime)}</div>
+                            </div>
+
+                        </div>
+
+                        <div className="p-3 rounded-md border border-blue-200 bg-blue-50 text-normal text-gray-900">
+                            <span className="font-bold">Demo Mode:</span>{" "}
+                            The dates shown reflect realistic timelines for this type of risk
+                            (e.g. seasonal rainfall or scheduled flights).
+                            However, for demonstration purposes, protocol actions such as
+                            subscription and settlement are not time-restricted here —
+                            you can interact with the pool immediately to experience the full lifecycle.
+                        </div>
+                    </div>
+
+                    {/* PREVIEW */}
+                    <div className="mt-6 p-4 rounded-md border bg-blue-50">
+                        <div className="font-medium text-sm">{preview}</div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="mt-6 flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 border border-gray-300 rounded-lg bg-white"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            onClick={handleCreate}
+                            disabled={!connected || loading}
+                            className="flex-[2] py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg"
+                        >
+                            {loading ? "Creating..." : "Create Pool"}
+                        </button>
+                    </div>
 
                 </div>
             </div>

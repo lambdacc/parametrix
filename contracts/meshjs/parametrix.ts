@@ -12,15 +12,15 @@ import {
     scriptHash,
     serializeAddressObj, SLOT_CONFIG_NETWORK,
     serializePlutusScript,
-    stringToHex, unixTimeToEnclosingSlot,
-    UTxO
+    stringToHex, unixTimeToEnclosingSlot,applyParamsToScript,
+        UTxO,deserializeDatum
 } from "@meshsdk/core";
-import {applyParamsToScript, parseInlineDatum} from "@meshsdk/core-csl";
 import {builtinByteString, hexToString} from "@meshsdk/common";
 
 import {assetClass} from "@meshsdk/common";
 import blueprint from "../aiken/parametrix/plutus.json" with {type: "json"};
 import {C3_CONFIG, getC3OracleData} from "./oracle/charli3Oracle.ts";
+import {getTxBuilder} from "./common.ts";
 
 
 // --------------------------------------------------
@@ -31,7 +31,7 @@ const NETWORK = 'preprod';
 const NETWORK_ID = 0;
 const MICRO_UNITS = 1000000
 const FEE_ADDRESS = "addr_test1qrxyezc0h7pzg3uv83v30ttmec4navpw8u5q5ft3w72ysvae7m8kn49reh566kzdzjtt0rwxfdj39gvm54z5z7tn4lrsqneynj"
-const COVERAGE = 100 * MICRO_UNITS;
+const COVERAGE = 100
 const PREMIUM_BPS = 500;
 
 function getScriptAddress(compiled: string): string {
@@ -65,11 +65,13 @@ function getValidator(name: string) {
     return v.compiledCode;
 }
 
+type Asset = {
+    policyId: string;
+    assetNameHex: string;
+    unit: string;
+};
 
-export const assetMap: Record<
-    string,
-    { policyId: string; assetNameHex: string; unit: string }
-> = {
+export const assetMap: Record<string, Asset> = {
     ADA: {
         policyId: "",
         assetNameHex: "",
@@ -90,11 +92,6 @@ export const assetMap: Record<
     },
 };
 
-
-// --------------------------------------------------
-// FIXED REGISTRY LOADER
-// --------------------------------------------------
-
 function buildPubKeyAddress(feeAddrBech32: string) {
     return pubKeyAddress(deserializeAddress(feeAddrBech32).pubKeyHash, deserializeAddress(feeAddrBech32).stakeCredentialHash);
 }
@@ -103,12 +100,7 @@ function buildMPubKeyAddress(bech32Address: string) {
     return mPubKeyAddress(deserializeAddress(bech32Address).pubKeyHash, deserializeAddress(bech32Address).stakeCredentialHash)
 }
 
-function loadScripts(
-    asset: { policyId: string; assetNameHex: string },
-    feeAddrBech32: string,
-    poolId: string
-) {
-    // ---------------- REGISTRY (mint policy) ----------------
+function loadScripts(asset: any, feeAddrBech32: string, poolId: string) {
     const registryCompiled = getValidator("registry.");
 
     const paymentAsset = assetClass(
@@ -164,31 +156,46 @@ function loadScripts(
 // --------------------------------------------------
 function buildPoolDatum(
     poolId: string,
-    asset: { policyId: string; assetNameHex: string },
+    asset: any,
     hedgerAddr: string,
     eventType: string,
-    feeAddr: string,
+    threshold: number,
+    coverage: number,
+    premiumBps: number,
+    feeAddr: string
 ) {
+    // --- Time configuration (hackathon presets) ---
+    const now = Date.now();
 
-    const eventThreshold = eventType === "RAINFALL_EXCEEDED" ? 100 : 999999;
+    const startTime = now;                          // pool opens immediately
+    const endTime = now + 24 * 60 * 60 * 1000;      // subscriptions close in 24h
+    const eventTime = endTime + 5 * 60 * 1000;      // oracle evaluation shortly after
+    const settlementTime = now;                     // simplified (for demo)
 
     return mConStr0([
-        poolId,                              // pool_id (ByteArray)
-        mAssetClass(asset.policyId, asset.assetNameHex), // payment_asset
-        buildMPubKeyAddress(hedgerAddr),           // hedger
+        poolId,                                       // unique pool identifier
 
-        eventType,                 // event_type
-        eventThreshold,                                 // event_threshold
-        COVERAGE,                  // coverage_target
-        500,                                 // premium_bps
+        mAssetClass(asset.policyId, asset.assetNameHex), // asset used (DJED)
 
-        Date.now(),                          // subscription_start
-        Date.now() + 60 * 60 * 24 * 1000,                 // subscription_end
-        Date.now() + 100,                // event_time -FOR TESTING
-        //Date.now() + 100,                // settlement_time - FOR TESTING
-        1776475090000,
-        buildMPubKeyAddress(feeAddr),              // fee_addr
-        500,                                 // fee__bps
+        buildMPubKeyAddress(hedgerAddr),              // hedger (protection buyer)
+
+        eventType,                                    // oracle event type (RAINFALL_EXCEEDED / FLIGHT_DELAY)
+
+        threshold,                                    // value required to trigger payout
+
+        coverage,                                     // payout amount to hedger if event occurs
+
+        premiumBps,                                   // premium rate (in basis points)
+
+        startTime,                                    // subscription start
+        endTime,                                      // subscription end
+
+        eventTime,                                    // oracle check time
+        settlementTime,                               // settlement execution time
+
+        buildMPubKeyAddress(feeAddr),                 // protocol / fee address
+
+        premiumBps,                                   // ⚠️ duplicate field (confirm purpose: fee or reuse)
     ]);
 }
 
@@ -222,13 +229,13 @@ export async function createPool(
 
 
     const wallet = loadWallet(walletFile);
-    const changeAddress = await wallet.getChangeAddress();
-    const hedgerPkh = resolvePaymentKeyHash(changeAddress);
+    const walletAddress = await wallet.getChangeAddress();
+    const hedgerPkh = resolvePaymentKeyHash(walletAddress);
     const poolId = `${hedgerPkh.slice(0, 3)}-${Date.now()}`; //fine for demo
 
 
     const provider = new KoiosProvider(NETWORK);
-    const utxos = await provider.fetchAddressUTxOs(changeAddress);
+    const utxos = await provider.fetchAddressUTxOs(walletAddress);
     if (!utxos.length) throw new Error('No wallet UTxOs');
 
     console.dir(utxos, {depth: null});
@@ -238,28 +245,29 @@ export async function createPool(
     const {registry, pool} = loadScripts(asset, feeAddress, poolId);
     const collateral = (await wallet.getCollateral())[0];
 
+    const coverageAmount = COVERAGE * MICRO_UNITS; // human → onchain
+
     // ---------------- DATUM ----------------
     const datum = buildPoolDatum(
         poolId,
         asset,
-        changeAddress,
+        walletAddress,
         eventType,
-        feeAddress,
+        100,
+        coverageAmount,
+        PREMIUM_BPS,
+        feeAddress
     );
 
     // ---------------- PREMIUM ----------------
 
     const premium_micro_units =
-        (COVERAGE * PREMIUM_BPS) / 10_000;
+        (coverageAmount * PREMIUM_BPS) / 10_000;
 
     console.log("premium:", premium_micro_units)
 
     // ---------------- TX ----------------
-    const tx = new MeshTxBuilder({
-    fetcher: provider,
-    submitter: provider,
-    evaluator: provider
-  }).setNetwork(NETWORK);
+    const tx = getTxBuilder()
 
     await tx
         .mintPlutusScriptV3()
@@ -285,7 +293,7 @@ export async function createPool(
         ])
         .txOutInlineDatumValue(
             buildContributionDatum(
-                changeAddress,
+                walletAddress,
                 premium_micro_units,
                 "PREMIUM"
             ))
@@ -299,7 +307,7 @@ export async function createPool(
             collateral!.output.address
         )
 
-        .changeAddress(changeAddress)
+        .changeAddress(walletAddress)
         .selectUtxosFrom(utxos)
         .complete();
 
@@ -345,10 +353,10 @@ export interface PoolDatumObject {
 
 
 function parsePoolDatumFromUtxo(utxo: UTxO): PoolDatumObject {
-    const datum = parseInlineDatum<any, any>({
-        inline_datum: utxo.output.plutusData!,
-    });
-    console.dir(datum, {depth: null});
+    // console.log("inspect");
+    // console.dir(utxo.output.plutusData, { depth: null });
+    const datum = deserializeDatum(utxo.output.plutusData!)
+    //console.dir(datum, {depth: null});
     return {
         pool_id: datum.fields[0].bytes,
         payment_asset: datum.fields[1],
@@ -414,11 +422,11 @@ export async function subscribe(
     const {registry, pool} = loadScripts(asset, feeAddress, poolId);
 
     // ---------------- FIND REGISTRY REF INPUT ----------------
-    const poolUtxo = await provider.fetchAddressUTxOs(pool.address);
+    const poolUtxos = await provider.fetchAddressUTxOs(pool.address);
 
     const nftUnit = registry.policyId + stringToHex(poolId);
 
-    const refUtxo = poolUtxo.find((u: any) =>
+    const refUtxo = poolUtxos.find((u: any) =>
         u.output.amount.some((a: any) => a.unit === nftUnit)
     );
 
@@ -430,6 +438,7 @@ export async function subscribe(
 
 
     const poolAddr = refUtxo.output.address;
+    console.log("poolAddr:", poolAddr);
 
     // ---------------- CALCULATIONS ----------------
     const deposited = amount * MICRO_UNITS;
@@ -519,33 +528,48 @@ export interface ParsedContributionUtxo {
     utxo: any;
     contributions: ContributionDatumObject[];
 }
-
 function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
     try {
-        const d = parseInlineDatum<any, any>({
-            inline_datum: u.output.plutusData!,
-        });
+        if (!u.output.plutusData) return null;
 
-        // expect ConStr0([List<ContributionDatum>])
+        const d = deserializeDatum(u.output.plutusData);
+
+        // normalize constructor (bigint → number)
+        const ctor = Number(d.constructor);
+
         if (
-            d.constructor !== 0 ||
-            !Array.isArray(d.fields) ||
-            !Array.isArray(d.fields[0]?.list)
+            ctor !== 0 ||
+            !Array.isArray(d.fields)
         ) {
             return null;
         }
 
-        const list = d.fields[0].list;
+        const field0 = d.fields[0];
 
-        const contributions = list.map((d: any) => {
-            if (d.constructor !== 0 || d.fields.length !== 3) {
+        // 🔁 emulate CSL `.list`
+        const list = Array.isArray(field0)
+            ? field0
+            : field0?.list;
+
+        if (!Array.isArray(list)) {
+            return null;
+        }
+
+        const contributions = list.map((item: any) => {
+            const innerCtor = Number(item.constructor);
+
+            if (
+                innerCtor !== 0 ||
+                !Array.isArray(item.fields) ||
+                item.fields.length !== 3
+            ) {
                 throw new Error("Invalid ContributionDatum shape");
             }
 
             return {
-                owner: serializeAddressObj(d.fields[0]),
-                amount: Number(d.fields[1].int),
-                amount_type: hexToString(d.fields[2].bytes),
+                owner: serializeAddressObj(item.fields[0]),
+                amount: Number(item.fields[1].int),
+                amount_type: hexToString(item.fields[2].bytes),
             };
         });
 
@@ -553,7 +577,8 @@ function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
             utxo: u,
             contributions,
         };
-    } catch {
+    } catch (e) {
+        console.log("parse fail:", e);
         return null;
     }
 }
@@ -617,12 +642,12 @@ export async function settle(
 
     for (const p of fundingPoolUtxoDatumPairs) {
         for (const c of p.contributions) {
-            if (c.amount_type === "PREMIUM") {
+            if (c.amount_type == "PREMIUM") {
                 premiumUtxoDatumPair = p;
                 break;
             }
 
-            if (c.amount_type === "SUBSCRIPTION") {
+            if (c.amount_type == "SUBSCRIPTION") {
                 subscriptionUtxosDatumPairs.push(p);
                 break;
             }
@@ -815,6 +840,7 @@ if (import.meta.main) {
                 console.log(`
 Usage:
   deno run -A parametrix.ts create <wallet.json> DJED RAINFALL_EXCEEDED
+  deno run -A parametrix.ts create <wallet.json> DJED FLIGHT_DELAY
   deno run -A parametrix.ts subscribe <wallet.json> <poolId> <amount> DJED
   deno run -A parametrix.ts settle <wallet.json> <poolId> DJED
 `);
