@@ -26,7 +26,7 @@ import {blockchainProvider, getTxBuilder} from "@/lib/common";
 const NETWORK = 'preprod';
 const NETWORK_ID = 0;
 const MICRO_UNITS = 1000000
-const FEE_ADDRESS = "addr_test1qrxyezc0h7pzg3uv83v30ttmec4navpw8u5q5ft3w72ysvae7m8kn49reh566kzdzjtt0rwxfdj39gvm54z5z7tn4lrsqneynj"
+export const FEE_ADDRESS = "addr_test1qrxyezc0h7pzg3uv83v30ttmec4navpw8u5q5ft3w72ysvae7m8kn49reh566kzdzjtt0rwxfdj39gvm54z5z7tn4lrsqneynj"
 const COVERAGE = 100 * MICRO_UNITS;
 const PREMIUM_BPS = 500;
 
@@ -84,7 +84,7 @@ function buildMPubKeyAddress(bech32Address: string) {
     return mPubKeyAddress(deserializeAddress(bech32Address).pubKeyHash, deserializeAddress(bech32Address).stakeCredentialHash)
 }
 
-function loadScripts(asset: any, feeAddrBech32: string, poolId: string) {
+export function loadScripts(asset: any, feeAddrBech32: string, poolId: string) {
     const registryCompiled = getValidator("registry.");
 
     const paymentAsset = assetClass(
@@ -518,7 +518,7 @@ export interface ParsedContributionUtxo {
     utxo: any;
     contributions: ContributionDatumObject[];
 }
-function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
+export function parseContributionDatumFromUtxo(u: any): ParsedContributionUtxo | null {
     try {
         if (!u.output.plutusData) return null;
 
